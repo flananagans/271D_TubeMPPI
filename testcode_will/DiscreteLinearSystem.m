@@ -40,18 +40,23 @@ classdef DiscreteLinearSystem < handle
             obj.x = obj.A*obj.x + obj.B*obj.u;
         end
 
-        % Function to add control noise
-        function addControlNoise(obj)
-
-            % add noise from the control noise distribution
-            obj.u = obj.u + transpose(mvnrnd(zeros(size(obj.u)), ...
-                                             obj.sigma_control));
+        % Set the current control input
+        function setControl(obj, u_new)
+            obj.u = u_new;
 
             % apply control limits to the signal
             for m = 1:length(obj.u)
                 obj.u(m) = max([min([obj.u_lims(m, 2), obj.u(m)]), ...
                                                 obj.u_lims(m, 1)]);
             end
+        end
+
+        % Function to sample control noise num_samples amount of times
+        function E = sampleControlNoise(obj, num_samples)
+            % add noise from the control noise distribution
+            E = transpose(mvnrnd(zeros(size(obj.u)), ...
+                                 obj.sigma_control, ...
+                                 num_samples));
         end
     end
 end

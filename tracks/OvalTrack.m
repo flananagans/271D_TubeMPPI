@@ -22,7 +22,7 @@ classdef OvalTrack < Track
             %OVALTRACK Construct an instance of this class
 
             % default track width
-            if(nargin <1 )
+            if(nargin < 1 )
                 w = 5;
             end
 

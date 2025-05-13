@@ -5,16 +5,16 @@
 base_dir = '..'; % the parent directory of the repo
 
 % add tracks
-addpath(genpath(fullfile('..', 'Tracks')));
+addpath(genpath(fullfile('..', 'tracks')));
 
 % add systems
-%addpath(genpath(fullfile('..', '..', 'Systems')));
+addpath(genpath(fullfile('..', '..', 'systems')));
 
 % add MPPI
-%addpath(genpath(fullfile('..', 'MPPI')));
+addpath(genpath(fullfile('..', 'MPPI')));
 
 % add iLQG
-%addpath(genpath(fullfile('..', '..', 'iLQG')));
+addpath(genpath(fullfile('..', '..', 'iLQG')));
 
 % Plotting things
 ax_fmt = struct('Box', 'off', 'TickLabelInterpreter', 'none', 'FontSize', 8, 'FontName', 'Arial');

@@ -9,8 +9,8 @@ classdef OvalTrack < Track
     
     properties
         boundaries = struct('width', 5, 'radius', 3, 'straightlength', 10); % limits of track
-        obstacle = struct('active', false, 'xlim', [-0.5, 0.5], 'ylim', [2, 3]);
-        obstacle_spawn_ylim = 1; % spawn obstacle once state passes this line
+        obstacle = struct('active', false, 'xlim', [-0.5, 0.5], 'ylim', [7, 8]);
+        obstacle_spawn_ylim = 2; % spawn obstacle once state passes this line
     end
 
     properties (Access=private)
@@ -83,6 +83,7 @@ classdef OvalTrack < Track
         function plotTrack(obj)
             % plots the current track state
         
+            %% Track
             % Plot boundaries
             hold on
             % plot first straight
@@ -96,6 +97,20 @@ classdef OvalTrack < Track
 
             % plot bottom curve
             plotCurve([-1*(obj.boundaries.width + 2*obj.boundaries.radius); 0], obj.boundaries.width, obj.boundaries.radius, [1;0]);
+        
+            %% Obstacle
+            if(obj.obstacle.active && isempty(obj.obstacle_plothandle))
+                % plot obstacle
+    
+                patch_x = [obj.obstacle.xlim(1), obj.obstacle.xlim(2), ...
+                           obj.obstacle.xlim(2), obj.obstacle.xlim(1)];
+                patch_y = [obj.obstacle.ylim(1), obj.obstacle.ylim(1), ...
+                           obj.obstacle.ylim(2), obj.obstacle.ylim(2)];
+
+                obj.obstacle_plothandle = patch(patch_x, patch_y, 'k');
+            elseif(~isempty(obj.obstacle_plothandle) && ~obj.obstacle.active)
+                obj.obstacle_plothandle.Visible = false;
+            end
         end
     end
 end

@@ -12,10 +12,11 @@ figure();
 for t = 0:75
 
     % update system state
-    system_state(1) = system_state(1) - 0.1;
+    system_state(1) = system_state(1);
     system_state(2) = system_state(2) + 0.3;
     
     % update/check track
+    track.spawnObstacles(system_state);
     if(track.checkTrackLimits(system_state))
         system_color = 'r';
     elseif(track.checkObstacles(system_state))

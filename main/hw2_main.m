@@ -24,9 +24,10 @@ T_sim = 50; % time duration of simulation
 % create physical system model
 
 %% Create track
-track = StraightTrack();
+track = OvalTrack();
 
 %% Run the simulation
+figure('Name', 'HW2 Oval Track');
 for t = 0:1/f_iLQG:T_sim
 
     if(mod(t, floor(f_iLQG/f_MPPI)) == 0)

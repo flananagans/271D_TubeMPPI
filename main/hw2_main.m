@@ -1,6 +1,10 @@
 %% Script to run for homework 2 simulation
 %   simple implementation of our system
 
+clear
+close all
+clc
+
 %% Initialize the workspace and include folders
 initWorkspace();
 
@@ -22,6 +26,7 @@ f_iLQG = 100; % frequency of the iLQG controller
 T_sim = 50; % time duration of simulation
 
 % create physical system model
+car = DiscreteLinearSystem(); % right now this is a double integrator 
 
 %% Create track
 track = OvalTrack();
@@ -32,11 +37,13 @@ for t = 0:1/f_iLQG:T_sim
 
     if(mod(t, floor(f_iLQG/f_MPPI)) == 0)
         %% Update MPPI at a slower rate to get the current input
-        u_mppi = MPPI.computeInputs();
+        
+        %u_mppi = MPPI.computeInputs(); % Shirley--> whatever this function
+                                        % is called
     end
 
     %% Get input for this step from iLQG
-    u_ilqg = iLQG();
+    %u_ilqg = iLQG(); % Niki --> whatever this function is called
 
     %% Update state of the actual system given the inputs from MPPI and iLQG
     car.setControl(u_ilqg + u_mppi)

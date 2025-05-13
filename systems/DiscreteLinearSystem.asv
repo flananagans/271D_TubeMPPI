@@ -21,9 +21,8 @@ classdef DiscreteLinearSystem < handle
         u = zeros(2, 1);
 
         %% System limits
-        % min (col 1) and max (col 2) allowable control for each channel
         u_lims = [-5, 5;
-                  -5, 5];
+                  -5, 5]; % min and max allowable control
 
         %% Noise definitions
         sigma_control = eye(2)/10; % control noise
@@ -60,11 +59,7 @@ classdef DiscreteLinearSystem < handle
 
             % apply control limits to the signal
             u_clipped = u;
-            for m = 1:length(obj.u)
-                % check for each row individually based on that row's lims
-                u_clipped(m, u(m, :) < obj.u_lims(m, 1)) = obj.u_lims(m, 1);
-                u_clipped(m, u(m, :) > obj.u_lims(m, 2)) = obj.u_lims(m, 2);
-            end
+            u_clipped(u > obj.u_lims(2)) = obj.u_lims(2);
         end
 
         % Function to sample control noise num_samples amount of times
@@ -104,3 +99,6 @@ classdef DiscreteLinearSystem < handle
         end
     end
 end
+
+
+

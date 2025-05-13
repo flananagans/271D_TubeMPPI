@@ -25,7 +25,7 @@ classdef OvalTrack < Track
         function outside_bounds = checkTrackLimits(obj, system_state)
             % true if system_state outside limits
 
-            if((system_state(2) > 0) && ...
+            if((system_state(2) > 0) || ...
                (system_state(2) < obj.boundaries.straightlength))
             
                 % check if in (0,0) side
@@ -35,23 +35,16 @@ classdef OvalTrack < Track
                 % check if in other side
                 inside_bounds = inside_bounds || ...
                                 (system_state(1) <= -2*obj.boundaries.radius - obj.boundaries.width/2) && ...
-                                (system_state(1) >= -2*obj.boundaries.radius - 3*obj.boundaries.width/2);
+                                (system_state(1) >= -2*obj.boundaries.radius - obj.boundaries.width);
 
-            else % we are in the curves
-
-                % by default say it is in the bottom curve
+            elseif(system_state(2) <= 0)
+                % system is in the bottom curve
                 center_pt = [-obj.boundaries.radius - obj.boundaries.width/2; 
-                             0];                
+                             ]
 
-                if(system_state(2) >= obj.boundaries.straightlength)
-                    % system is in the top curve
-                    center_pt(2) = obj.boundaries.straightlength;
-                end
+            elseif(system_state(2) >= obj.boundaries.straightlength)
+                % system is in the top curve
 
-                r = vecnorm(system_state(1:2) - center_pt);
-
-                inside_bounds = (r >= obj.boundaries.radius) && ...
-                                (r <= obj.boundaries.radius + obj.boundaries.width);
             end
 
             outside_bounds = ~inside_bounds;

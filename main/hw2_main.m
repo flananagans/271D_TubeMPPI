@@ -42,12 +42,13 @@ for t = 0:1/f_iLQG:T_sim
     if(mod(t, floor(f_iLQG/f_MPPI)) == 0)
         %% Update MPPI at a slower rate to get the current input
         
-        %u_mppi = MPPI.computeInputs(); % Shirley--> whatever this function
+        [x_mppi, u_mppi] = MPPI.computeInputs(); % Shirley--> whatever this function
                                         % is called
     end
 
     %% Get input for this step from iLQG
-    %u_ilqg = iLQG(); % Niki --> whatever this function is called
+    ilqg.car.x = car.x - x_mppi(1);
+    u_ilqg = iLQG(); % Niki --> whatever this function is called
 
     %% Update state of the actual system given the inputs from MPPI and iLQG
     car.setControl(u_ilqg + u_mppi)

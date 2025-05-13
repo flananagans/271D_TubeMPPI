@@ -18,24 +18,50 @@ classdef OvalTrack < Track
     end
     
     methods
-        function obj = OvalTrack()
+        function obj = OvalTrack(w, r, sl)
             %OVALTRACK Construct an instance of this class
+
+            % default track width
+            if(nargin <1 )
+                w = 5;
+            end
+
+            %default track radius
+            if(nargin < 2 )
+                r = 3;
+            end
+
+            % default track straight length
+            if(nargin < 3)
+                sl = 10;
+            end
+
+            % Set boundaries
+            obj.boundaries = struct('width', w, 'radius', r, 'straightlength', sl);
+        end
+
+        % set straight length of track
+        function setStraightLength(obj, sl)
+            obj.boundaries.straightlength = sl;
         end
         
-        function outside_bounds = checkTrackLimits(obj, system_state)
-            % true if system_state outside limits
+        function outside_bounds = checkTrackLimits(obj, system_pos)
+        % Function to check if we have are outside track limits
+        %   returns true if system_pos outside the track
+        %
+        %   system_pos: position of system in [x;y]
 
-            if((system_state(2) > 0) && ...
-               (system_state(2) < obj.boundaries.straightlength))
+            if((system_pos(2) > 0) && ...
+               (system_pos(2) < obj.boundaries.straightlength))
             
                 % check if in (0,0) side
-                inside_bounds = (system_state(1) <= obj.boundaries.width/2) && ...
-                                (system_state(1) >= -obj.boundaries.width/2);
+                inside_bounds = (system_pos(1) <= obj.boundaries.width/2) && ...
+                                (system_pos(1) >= -obj.boundaries.width/2);
 
                 % check if in other side
                 inside_bounds = inside_bounds || ...
-                                (system_state(1) <= -2*obj.boundaries.radius - obj.boundaries.width/2) && ...
-                                (system_state(1) >= -2*obj.boundaries.radius - 3*obj.boundaries.width/2);
+                                (system_pos(1) <= -2*obj.boundaries.radius - obj.boundaries.width/2) && ...
+                                (system_pos(1) >= -2*obj.boundaries.radius - 3*obj.boundaries.width/2);
 
             else % we are in the curves
 
@@ -43,12 +69,12 @@ classdef OvalTrack < Track
                 center_pt = [-obj.boundaries.radius - obj.boundaries.width/2; 
                              0];                
 
-                if(system_state(2) >= obj.boundaries.straightlength)
+                if(system_pos(2) >= obj.boundaries.straightlength)
                     % system is in the top curve
                     center_pt(2) = obj.boundaries.straightlength;
                 end
 
-                r = vecnorm(system_state(1:2) - center_pt);
+                r = vecnorm(system_pos(1:2) - center_pt);
 
                 inside_bounds = (r >= obj.boundaries.radius) && ...
                                 (r <= obj.boundaries.radius + obj.boundaries.width);
@@ -57,15 +83,18 @@ classdef OvalTrack < Track
             outside_bounds = ~inside_bounds;
         end
 
-        function in_obstacle = checkObstacles(obj, system_state)
-            % true is system_state inside obstacle
+        function in_obstacle = checkObstacles(obj, system_pos)
+        % Function to check if we have hit an obstacle
+        %   returns true if system_pos inside obstacle
+        %
+        %   system_pos: position of system in [x;y]
 
             if(obj.obstacle.active)
                 % check if state is inside boundary
-                in_obstacle = ((system_state(1) >= obj.obstacle.xlim(1)) && ...
-                              (system_state(1) <= obj.obstacle.xlim(2))) && ...
-                              ((system_state(2) >= obj.obstacle.ylim(1)) && ...
-                              (system_state(2) <= obj.obstacle.ylim(2)));
+                in_obstacle = ((system_pos(1) >= obj.obstacle.xlim(1)) && ...
+                              (system_pos(1) <= obj.obstacle.xlim(2))) && ...
+                              ((system_pos(2) >= obj.obstacle.ylim(1)) && ...
+                              (system_pos(2) <= obj.obstacle.ylim(2)));
             else
                 % no obstacles
                 in_obstacle = false;
@@ -86,11 +115,17 @@ classdef OvalTrack < Track
             %% Track
             % Plot boundaries
             hold on
-            % plot first straight
-            plotStraight([0;0], obj.boundaries.width, obj.boundaries.straightlength, [0;1]);
+            axis equal;
 
-            % plot second straight
-            plotStraight([-1*(obj.boundaries.width + 2*obj.boundaries.radius);0], obj.boundaries.width, obj.boundaries.straightlength, [0;1]);
+
+            if(obj.boundaries.straightlength > 0)
+            % We may not have a straight if the track is a ring
+                % plot first straight
+                plotStraight([0;0], obj.boundaries.width, obj.boundaries.straightlength, [0;1]);
+    
+                % plot second straight
+                plotStraight([-1*(obj.boundaries.width + 2*obj.boundaries.radius);0], obj.boundaries.width, obj.boundaries.straightlength, [0;1]);
+            end
 
             % plot top curve
             plotCurve([0; obj.boundaries.straightlength], obj.boundaries.width, obj.boundaries.radius, [-1;0]);

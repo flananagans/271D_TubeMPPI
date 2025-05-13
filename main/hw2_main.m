@@ -29,10 +29,14 @@ T_sim = 50; % time duration of simulation
 car = DiscreteLinearSystem(); % right now this is a double integrator 
 
 %% Create track
-track = OvalTrack();
+% ring track from paper point mass example
+or = 2.125;
+ir = 1.875;
+track = OvalTrack(or-ir, ir, 0);
 
 %% Run the simulation
 figure('Name', 'HW2 Oval Track');
+track.plotTrack();
 for t = 0:1/f_iLQG:T_sim
 
     if(mod(t, floor(f_iLQG/f_MPPI)) == 0)

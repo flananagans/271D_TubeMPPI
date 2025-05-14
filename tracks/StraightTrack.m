@@ -52,6 +52,8 @@ classdef StraightTrack < Track
         
             % Plot boundaries
             hold on
+            axis equal;
+            
             xline(obj.boundaries.xlim(1), 'k', 'LineWidth', 1.5);
             xline(obj.boundaries.xlim(2), 'k', 'LineWidth', 1.5);
 

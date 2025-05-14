@@ -26,8 +26,11 @@ classdef iLQG
     methods
 
         % Constructor
-        function obj = iLQG(varargin)
-            obj.car = DiscreteLinearSystem;
+        function obj = iLQG(system)
+
+            % NIKI: If you need the sampling time, that is given by
+            % system.dt
+            obj.car = system;
 
         end
 

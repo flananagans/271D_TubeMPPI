@@ -140,39 +140,7 @@ classdef DiscreteLinearSystem < handle
 
         % NIKI: add calculateCost method
 
-        % MOVED TO MPPI
-        %{
-        function rc= running_cost(obj,lam,eT)
-            %Lagrange Multiplier, lam
-            %extarct states
-            xt = obj.x(1);
-            yt = obj.x(2);
-            vx = obj.x(3);
-            vy = obj.x(4);
-            rc_state= (sqrt(vx^2+vy^2)-obj.vdes)^2+1000*check_constraints(xt,yt);
-            rc_control = lam*obj.u.T*obj.sigma_control*eT;
-            rc = rc_state + rc_control
-            
-        end
-        
-        function cost = CostFunction(obj,X)
-            xt = X(1);
-            yt = X(2); 
-            vx = X(3); 
-            vy = X(4);
-            cost = (sqrt(vx^2+vy^2)-obj.vdes)^2+1000*check_constraints(xt,yt)
-            
-        end
-
-        function flag = check_constraints(obj,x,y)
-            flag = and(1.875 < sqrt(x^2+y^2), sqrt(x^2+y^2) <2.125);
-
-        end
-
-        function tc = terminal_cost(obj)
-            tc = 0;
-        end
-        %}
-
+       
+       
     end
 end

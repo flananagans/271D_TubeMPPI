@@ -27,6 +27,7 @@ T_sim = 50; % time duration of simulation
 
 % create physical system model
 car = DiscreteLinearSystem(); % right now this is a double integrator 
+MPPI = MPPI_Controller(car)
 
 %% Create track
 track = OvalTrack();

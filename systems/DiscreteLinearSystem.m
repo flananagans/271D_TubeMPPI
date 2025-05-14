@@ -19,6 +19,8 @@ classdef DiscreteLinearSystem < handle
         B = [zeros(2, 2);
              eye(2)*0.01];
         u = zeros(2, 1);
+        vdes = 0;
+        
 
         %% System limits
         % min (col 1) and max (col 2) allowable control for each channel
@@ -32,8 +34,9 @@ classdef DiscreteLinearSystem < handle
 
     methods
         % Constructor
-        function obj=DiscreteLinearSystem(varargin)
+        function obj=DiscreteLinearSystem(varargin,vdes)
             % nothing for now
+            obj.vdes = vdes
         end
 
         % Function to set dt. Set this to match the controller frequency
@@ -46,9 +49,16 @@ classdef DiscreteLinearSystem < handle
 
         % Function to update the state of the system based on current x
         % and u
-        function updateState(obj)
+        function updateStateNominal(obj)
             obj.x = obj.A*obj.x + obj.B*obj.u;
         end
+        function updateStateActual(obj)
+             W = transpose(mvnrnd(zeros(size(obj.x)), ...
+                                 obj.sigma_environment, ...
+                                 1));
+            obj.x = obj.A*obj.x +obj.B*obj.u + W
+        end
+
 
         % Set the current control input
         function setControl(obj, u_new)
@@ -75,7 +85,7 @@ classdef DiscreteLinearSystem < handle
                                  num_samples));
         end
 
-        function [x_traj, u_traj] = rolloutTraj(obj, u_init, T)
+        function [x_traj, u_traj,e_traj,traj_cost] = rolloutTraj(obj, u_init, T)
         %% Rollout a single trajectory given initial trajectory of inputs
         %   and the time horizon T
         %
@@ -88,19 +98,56 @@ classdef DiscreteLinearSystem < handle
         %   u_traj: input trajectory over the horizon (t -> N-1)
 
             % how many time steps
+            lam = 1
             N = size(u_init, 2);
+            traj_cost = 0
             if(N ~= T/obj.dt)
                 error("incorrect size of u_init! You need one control input column for each of the N = t/obj.dt time steps\n");
             end
 
             x_traj = zeros(length(obj.x), N); % states along the trajectory
-            u_traj = u_init + obj.sampleControlNoise(N); % input trajectory is the initial control trajectory + sampling of control noise
+            e_traj = obj.sampleControlNoise(N);
+            u_traj = u_init + e_traj; % input trajectory is the initial control trajectory + sampling of control noise
             u_traj = obj.clipControl(u_traj);
             for i = 1:N
                 obj.setControl(u_traj(:, i)); % set system control
-                obj.updateState(); % update state to roll forward
+                obj.updateStateNominal(); % update state to roll forward
+                traj_cost = traj_cost +running_cost(lam,e_traj(:,i))
                 x_traj(:, i) = obj.x; % record the current state
             end
+            traj_cost = traj_cost+terminal_cost()
         end
+        %% Computing Costs and Contraints
+        function rc= running_cost(obj,lam,eT)
+            %Lagrange Multiplier, lam
+            %extarct states
+            xt = obj.x(1);
+            yt = obj.x(2);
+            vx = obj.x(3);
+            vy = obj.x(4);
+            rc_state= (sqrt(vx^2+vy^2)-obj.vdes)^2+1000*check_constraints(xt,yt);
+            rc_control = lam*obj.u.T*obj.sigma_control*eT;
+            rc = rc_state + rc_control
+            
+        end
+        function cost = CostFunction(obj,X)
+            xt = X(1);
+            yt = X(2); 
+            vx = X(3); 
+            vy = X(4);
+            cost = (sqrt(vx^2+vy^2)-obj.vdes)^2+1000*check_constraints(xt,yt)
+            
+
+            
+        end
+
+        function flag = check_constraints(obj,x,y)
+            flag = and(1.875 < sqrt(x^2+y^2), sqrt(x^2+y^2) <2.125);
+
+        end
+        function tc = terminal_cost(obj)
+            tc = 0;
+        end
+
     end
 end

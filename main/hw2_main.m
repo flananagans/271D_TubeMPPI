@@ -27,8 +27,8 @@ track = OvalTrack(or-ir, ir, 0);
 
 %% Controller setup
 %MPPI
-f_MPPI = 50; % frequency of MPPI controller
-K_MPPI = 1200; % number of trajectories to rollout
+f_MPPI = 1/(2*dt); % frequency of MPPI controller
+K_MPPI = 100; % number of trajectories to rollout
 T_MPPI = 2; % 2 second time-horizon
 v_des = 2; % m/s desired velocity
 
@@ -41,7 +41,7 @@ MPPI = MPPI_Controller(car_MPPI, track, K_MPPI, T_MPPI);
 MPPI.v_des = v_des; % set desired speed
 
 % iLQG
-f_iLQG = 100; % frequency of the iLQG controller
+f_iLQG = 1/dt; % frequency of the iLQG controller
 
 % create iLQG controller instance
 car_iLQG = DiscreteLinearSystem();
@@ -52,27 +52,32 @@ ilqg = iLQG(car_iLQG);
 %% Run the simulation
 figure('Name', 'HW2 Oval Track');
 track.plotTrack();
+mppi_run_flag = 0;
+xlim([-5, 1]);
+ylim([-3, 3]);
 for t = 0:1/f_iLQG:T_sim
 
-    if(mod(t, floor(f_iLQG/f_MPPI)) == 0)
+    if(mod(floor(1000*t), floor(1000*MPPI.dt)) == 0)
         %% Update MPPI at a slower rate to get the current input
         
-        [u_mppi, x_mppi] = MPPI.RunMPPI(); % Shirley--> whatever this function
-                                           % is called
+        [u_mppi, x_mppi] = MPPI.RunMPPI(car.x); % Shirley--> whatever this function
+                                                % is called
+        MPPI.plotController(); % function to plot all trajectories
+    else
+        walla = 0;
     end
 
     %% Get input for this step from iLQG
     % NIKI - check this
     state_error = x_mppi(:, 1) - car.x; % x0 for iLQG
-    u_ilqg = ilqg.solve(state_error, u_mppi(:, 1)); 
+    u_ilqg = 0; %ilqg.solve(state_error, u_mppi(:, 1));
 
     %% Update state of the actual system given the inputs from MPPI and iLQG
-    car.setControl(u_ilqg + u_mppi(:, 1))
-    car.updateStateNoisy();
+    car.setControl(u_ilqg + u_mppi(:, 1));
+    car.updateState();
 
-    %% Plot everything
-    track.plotTrack();
-    %MPPI.plot(); % function to plot all trajectories
-    %car.plot(); % plot position and orientation of our car
+    %% Plot car
+    %track.plotTrack();
+    car.plotSystem(); % plot position and orientation of our car
     drawnow();
 end

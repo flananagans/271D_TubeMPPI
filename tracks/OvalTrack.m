@@ -146,6 +146,7 @@ classdef OvalTrack < Track
             elseif(~isempty(obj.obstacle_plothandle) && ~obj.obstacle.active)
                 obj.obstacle_plothandle.Visible = false;
             end
+
         end
     end
 end

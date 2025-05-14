@@ -3,6 +3,7 @@
 classdef iLQG
     properties
         car = []; %car object
+        
         lims = []; %control limits
         parallel = true; %use parallel line-search?
         Alpha = 10.^linspace(0,-3,11); %backtracking coefficients
@@ -27,11 +28,11 @@ classdef iLQG
     methods
 
         % Constructor
-        function obj = iLQG(varargin)
+        function obj = iLQG(system)
 
             % NIKI: If you need the sampling time, that is given by
             % system.dt
-            obj.car = DiscreteLinearSystem;
+            obj.car = system;
             obj.DYNCST = @(x,u,i) car_dyn_cst(x,u);
 
         end

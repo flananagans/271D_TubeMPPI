@@ -31,7 +31,11 @@ classdef DiscreteLinearSystem < handle
         sigma_environment = eye(4); % environmental noise
 
         %% Cost matrices
-        % NIKI: Add Q and R definitions
+        Q = eye(4);
+        R = eye(2);
+
+        %% Plotting
+        system_plothandle = [];
     end
 
     methods
@@ -137,10 +141,22 @@ classdef DiscreteLinearSystem < handle
         end
 
         %% Computing Costs and Contraints
+        function c = calculateCost(obj)
+            c = obj.x'*obj.Q*obj.x + obj.u'*obj.R*obj.u;
+        end     
 
-        % NIKI: add calculateCost method
+        %% Plotting
+        function plotSystem(obj)
 
-       
+            if(~isempty(obj.system_plothandle))
+                % update the point's position
+                obj.system_plothandle.XData = obj.x(1);
+                obj.system_plothandle.YData = obj.x(2);
+            else
+                % plot the point for the first time
+                obj.system_plothandle = scatter(obj.x(1), obj.x(2), 25, 'filled', 'MarkerEdgeColor', 'b', 'MarkerFaceColor', 'b');
+            end
+        end
        
     end
 end

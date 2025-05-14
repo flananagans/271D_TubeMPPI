@@ -13,11 +13,17 @@ classdef MPPI_Controller < handle
         x_traj = []; % nominal state trajectory
         u_traj = []; % control trajectory
 
+        x_traj_list = {}; % all trajectories generated for this time point
+
         % Track used for constraints
         track = [];
 
         % Cost function properties
         v_des = 2.0; % desired velocity
+
+        % Plotting
+        x_traj_plothandle = [];
+        x_traj_list_plothandle = [];
     end
 
     methods
@@ -36,11 +42,11 @@ classdef MPPI_Controller < handle
         end
     
         % Function to run the core MPPI optimization
-        function [U,X,S] = MPPI(obj, initial_state)
+        function [U,X,S, x_traj_list] = MPPI(obj, initial_state)
 
 
-            % SHIRLEY: shift control trajectory over one step (u_traj)
-            obj.u_traj = [obj.u_traj(2:end),zeros(length(obj.system.u),1)]
+            % Shift control trajectory over one step (u_traj)
+            obj.u_traj = [obj.u_traj(:, 2:end), zeros(length(obj.system.u),1)];
 
 
             % array of costs for each trajectory
@@ -49,6 +55,9 @@ classdef MPPI_Controller < handle
             % cell array of each trajectory's noise trajectory
             e_traj_list = cell(1, obj.N_traj);
 
+            % cell array of to track all the generated state trajectories
+            x_traj_list = cell(1, obj.N_traj);
+
             % simulate N_traj -> acquire costs
             for k = 1:obj.N_traj
 
@@ -56,7 +65,7 @@ classdef MPPI_Controller < handle
                 obj.system.x = initial_state; 
                 
                 % Rollout a trajectory
-                [x_traj_k, u_traj_k, e_traj_list{k}] = obj.system.rolloutTraj(obj.u_traj, obj.T);
+                [x_traj_k, u_traj_k, e_traj_k] = obj.system.rolloutTraj(obj.u_traj, obj.T);
                 %initlize the trajectory cost
                 traj_cost = 0;
                 
@@ -70,15 +79,17 @@ classdef MPPI_Controller < handle
                 % Note From Shirley: Please check if I'm using the
                 % constraint function correctly
                 N = obj.T/obj.dt;
-                for i = 1:N
+                for t = 1:N-1
                     %compute the running cost 
-                    x_traj_k(i) = x_current
-                    cc = obj.track.checkTrackLimits(x_current(1:2));
-                    traj_cost = traj_cost + running_cost(x_traj_k(:,i), u_traj_k(:,i),e_traj_list{k}(:,i),cc);
+                    cc = obj.track.checkTrackLimits(x_traj_k(1:2,t));
+                    traj_cost = traj_cost + obj.runningCost(x_traj_k(:,t+1), u_traj_k(:,t), e_traj_k(:,t), cc);
                 end
-                traj_cost = traj_cost + terminal_cost; 
+                traj_cost = traj_cost + obj.terminalCost(x_traj_k(:, end)); 
+                
+                % store our trajectory info
                 cost_list(k) = traj_cost;
-
+                e_traj_list{k} = e_traj_k;
+                x_traj_list{k} = x_traj_k;
             end
             min_cost = min(cost_list);
 
@@ -95,88 +106,117 @@ classdef MPPI_Controller < handle
             for k = 1:obj.N_traj
                 sum = sum + w(k)*e_traj_list{k};
             end
+            E = (1/eta)*sum; % optimal control perturbation
 
             % Update Control Sequence
-            obj.u_traj = obj.u_traj + (1/eta)*sum;
-            U = obj.u_traj;
+            U = obj.u_traj + E;
     
             % Simulate the system with U to get X
             N = obj.T/obj.dt;
-            X = zeros(size(A,2),N);
-            X(:, 1) = initial_state;
+            X = zeros(size(obj.system.x,1),N); % this is states for t = 2:N
             obj.system.x = initial_state;
             S = 0;
-            for t = 1:N - 1
+            for t = 1:N
                 obj.system.setControl(U(:, t));
-                X(:, t+1) = obj.system.updateState();
-                X_curr = X(:,t+1);
+                X(:, t) = obj.system.updateState();
+                X_curr = X(:, t);
                 CC = obj.track.checkTrackLimits(X_curr(1:2));
                 
                 % SHIRLEY: update for MPPI cost
-                S = costFunction(X(:, t+1),U(:,t),CC) + S;
+                S = obj.runningCost(X(:, t), U(:,t), E(:, t), CC) + S;
             end
             % SHIRLEY: update for MPPI cost
-            S = obj.system.terminal_cost() + S;
+            S = obj.terminalCost(X(:, end)) + S;
     
         end
     
-        function [U,X] = RunMPPI(obj, actual_state, safety)
+        function [U,X] = RunMPPI(obj, actual_state)
 
             % Run MPPI starting from nominal state at this time
-            [U_nominal, X_nominal, S_nominal] = obj.MPPI(obj.x_traj(:, 1));
+            [U_nominal, X_nominal, S_nominal, x_traj_list_nominal] = obj.MPPI(obj.x_traj(:, 1));
 
             % Run MPPI starting from actual state at this time
-            [U_actual, X_actual, S_actual] = obj.MPPI(actual_state);
+            [U_actual, X_actual, S_actual, x_traj_list_actual] = obj.MPPI(actual_state);
+
+            % Set safety threshold
+            safety = 0;
 
             if S_actual <= S_nominal + safety
                 U = U_actual;
                 X = X_actual;
+                obj.x_traj_list = x_traj_list_actual;
             else
                 U = U_nominal;
                 X = X_nominal;
+                obj.x_traj_list = x_traj_list_nominal;
             end
+
+            % update the object's trajectories
+            obj.u_traj = U;
+            obj.x_traj = X;
         end
 
         % SHIRLEY: Bring over cost methods from DLS
-        
-        function rc= running_cost(obj,x,u,eT,cc)
-            %exract states
-            %xt = x(1);
-            %yt = x(2);
-            vx = x(3);
-            vy = x(4);
-            %check_constraints = obj.track.checkTrackLimits(x(1:2));
-            rc_state= (sqrt(vx^2+vy^2)-vdes)^2+cc;
-            rc_control = obj.lambda*u.T*obj.system.sigma_control*eT;
-            rc = rc_state + rc_control;
+        %{
+        function rc = runningCost(obj, x_t, u_t, e_t, cc)
+            %exract velocities
+            vx = x_t(3);
+            vy = x_t(4);
             
+            rc_state = (sqrt(vx^2+vy^2)-vdes)^2 + 1000*cc;
+            rc_control = obj.lambda*(u_t'/obj.system.sigma_control)*e_t;
+            rc = rc_state + rc_control;            
         end
-        
-        % Referring to eqn 3 & 4 in the paper
-        function cost = runningCostFunction(obj,X,U,CC)
-            %xt = X(1);
-            %yt = X(2); 
-            vx = X(3); 
-            vy = X(4);
+        %}
+
+        % Referring to algorithm in the paper and equations 13 & 14
+        function cost = runningCost(obj, x_t, u_t, e_t,  CC)
+
+            % Get velocity of system
+            vx = x_t(3); 
+            vy = x_t(4);
 
             %calculate the cost of the states and control
-            cost_states = (sqrt(vx^2+vy^2)-vdes)^2+1000*CC;
-            cost_control = obj.lambda*U.T*obj.system.sigma_control*U;
+            cost_states = (sqrt(vx^2 + vy^2) - obj.v_des)^2 + 1000*CC;
+            cost_control = obj.lambda*(u_t'/obj.system.sigma_control)*e_t;
             cost = cost_states + cost_control;
-            
         end
 
-        %function flag = check_constraints(obj,x,y)
-        %    flag = and(1.875 < sqrt(x^2+y^2), sqrt(x^2+y^2) <2.125);
-
-        %end
-
         % For Linear Discrete Time System, this is 0
-        function tc = terminal_cost(obj)
+        function tc = terminalCost(obj, final_state)
             tc = 0;
         end
        
+        %% Plotting trajectories
+        function plotController(obj)
 
+            if(isempty(obj.x_traj_list_plothandle))
+                obj.x_traj_list_plothandle = cell(size(obj.x_traj_list));
+            end
+
+            % Plot all of our tested trajectories
+            for k = 1:length(obj.x_traj_list_plothandle)
+                if(~isempty(obj.x_traj_list_plothandle{k}))
+                    % update the trajectory's data
+                    obj.x_traj_list_plothandle{k}.XData = obj.x_traj_list{k}(1,:);
+                    obj.x_traj_list_plothandle{k}.YData = obj.x_traj_list{k}(2,:);
+                else
+                    % plot the trajectory for the first time
+                    obj.x_traj_list_plothandle{k} = plot(obj.x_traj_list{k}(1,:), obj.x_traj_list{k}(2,:), 'LineWidth', 0.5, 'Color', '#AAAAAA');
+                end
+            end
+
+            % Plot our nominal trajectory
+            if(~isempty(obj.x_traj_plothandle))
+                % update the trajectory's data
+                obj.x_traj_plothandle.XData = obj.x_traj(1, :);
+                obj.x_traj_plothandle.YData = obj.x_traj(2, :);
+            else
+                % plot the trajectory for the first time
+                obj.x_traj_plothandle = plot(obj.x_traj(1, :), obj.x_traj(1, :), 'k', 'LineWidth', 1);
+            end
+        end
+        
     end
 end
 

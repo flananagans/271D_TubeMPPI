@@ -20,21 +20,23 @@ classdef iLQG
         print = 2; %0: no;  1: final; 2: iter; 3: iter, detailed
         plotFn = @(x)0; %user-defined graphics callback
         cost = []; %initial cost for pre-rolled trajectory 
+        DYNCST; 
 
     end
 
     methods
 
         % Constructor
-        function obj = iLQG(system)
+        function obj = iLQG(varargin)
 
             % NIKI: If you need the sampling time, that is given by
             % system.dt
-            obj.car = system;
+            obj.car = DiscreteLinearSystem;
+            obj.DYNCST = @(x,u,i) car_dyn_cst(x,u);
 
         end
 
-        function [x, u, L, Vx, Vxx, cost, trace, stop] = solve(DYNCST, x0, u0)
+        function [x, u, L, Vx, Vxx, cost, trace, stop] = solve(obj, x0, u0)
         % solve - solve the deterministic finite-horizon optimal control problem.
         %
         %        minimize sum_i CST(x(:,i),u(:,i)) + CST(x(:,end))
@@ -116,7 +118,7 @@ classdef iLQG
         % year={2014}, month={May}, doi={10.1109/ICRA.2014.6907001}}
         %---------------------- user-adjustable parameters ------------------------
         
-        
+        DYNCST = obj.DYNCST;
         
         % --- initial sizes and controls
         n   = size(x0, 1);          % dimension of state vector
@@ -526,6 +528,76 @@ classdef iLQG
         end
 
         
+        function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = car_dyn_cst(obj,x,u)
+        % combine car dynamics and cost
+        % use helper function finite_difference() to compute derivatives
+        
+        %give new state and control inputs to system
+        obj.car.x = x;
+        obj.car.setControl(u);
+
+        %update system state
+        obj.car.updateState;
+
+        if nargout == 2
+            f = obj.car.x;
+            c = obj.car.calculateCost;
+        else
+            % state and control indices
+            ix = 1:4;
+            iu = 5:6;
+            
+            % dynamics first derivatives
+            xu_dyn  = @obj.car.updateState;
+            J       = finite_difference(xu_dyn, [x; u]);
+            fx      = J(:,ix,:);
+            fu      = J(:,iu,:);
+            
+            % dynamics second derivatives
+            [fxx,fxu,fuu] = deal([]);
+          
+            
+            % cost first derivatives
+            xu_cost = @obj.car.calculateCost;
+            J       = squeeze(finite_difference(xu_cost, [x; u]));
+            cx      = J(ix,:);
+            cu      = J(iu,:);
+            
+            % cost second derivatives
+            xu_Jcst = @obj.car.calculateCost;
+            JJ      = finite_difference(xu_Jcst, [x; u]);
+            JJ      = 0.5*(JJ + permute(JJ,[2 1 3])); %symmetrize
+            cxx     = JJ(ix,ix,:);
+            cxu     = JJ(ix,iu,:);
+            cuu     = JJ(iu,iu,:);
+            
+            [f,c] = deal([]);
+        end
+        end
+
+
+        function J = finite_difference(fun, x, h)
+        % simple finite-difference derivatives
+        % assumes the function fun() is vectorized
+        
+        if nargin < 3
+            h = 2^-17;
+        end
+        
+        [n, K]  = size(x);
+        H       = [zeros(n,1) h*eye(n)];
+        H       = permute(H, [1 3 2]);
+        X       = pp(x, H);
+        X       = reshape(X, n, K*(n+1));
+        Y       = fun(X);
+        m       = numel(Y)/(K*(n+1));
+        Y       = reshape(Y, m, K, n+1);
+        J       = pp(Y(:,:,2:end), -Y(:,:,1)) / h;
+        J       = permute(J, [1 3 2]);
+
+        end
+
+
     end
 
 end

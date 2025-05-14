@@ -23,6 +23,10 @@ classdef DiscreteLinearSystem < handle
         u_lims = [-5, 5;
                   -5, 5]; % min and max allowable control
 
+        %% cost definitions
+        Q = eye(4);
+        R = eye(2);
+
         %% Noise definitions
         sigma_control = eye(2)/10; % control noise
         sigma_environment = eye(4)/10; % environmental noise
@@ -57,6 +61,10 @@ classdef DiscreteLinearSystem < handle
             E = transpose(mvnrnd(zeros(size(obj.u)), ...
                                  obj.sigma_control, ...
                                  num_samples));
+        end
+
+        function c = calculateCost(obj)
+            c = obj.x'*obj.Q*obj.x + obj.u'*obj.R*obj.u;
         end
     end
 end

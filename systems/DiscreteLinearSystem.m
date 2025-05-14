@@ -117,6 +117,7 @@ classdef DiscreteLinearSystem < handle
             end
             traj_cost = traj_cost+terminal_cost()
         end
+
         %% Computing Costs and Contraints
         function rc= running_cost(obj,lam,eT)
             %Lagrange Multiplier, lam
@@ -130,6 +131,7 @@ classdef DiscreteLinearSystem < handle
             rc = rc_state + rc_control
             
         end
+        
         function cost = CostFunction(obj,X)
             xt = X(1);
             yt = X(2); 

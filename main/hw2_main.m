@@ -58,7 +58,7 @@ for t = 0:1/f_iLQG:T_sim
         %% Update MPPI at a slower rate to get the current input
         
         [u_mppi, x_mppi] = MPPI.RunMPPI(); % Shirley--> whatever this function
-                                        % is called
+                                           % is called
     end
 
     %% Get input for this step from iLQG

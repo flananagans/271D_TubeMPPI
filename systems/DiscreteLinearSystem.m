@@ -5,6 +5,7 @@
 %   This currently only has the methods to update the state and add noise 
 %   to the control input from the control noise distribution 
 
+% TODO: 
 
 classdef DiscreteLinearSystem < handle
 
@@ -22,17 +23,20 @@ classdef DiscreteLinearSystem < handle
 
         %% System limits
         % min (col 1) and max (col 2) allowable control for each channel
-        u_lims = [-5, 5;
-                  -5, 5];
+        u_lims = [-1, 1;
+                  -1, 1] * 10;
 
         %% Noise definitions
-        sigma_control = eye(2)/10; % control noise
-        sigma_environment = eye(4)/10; % environmental noise
+        sigma_control = eye(2); % control noise
+        sigma_environment = eye(4); % environmental noise
+
+        %% Cost matrices
+        % NIKI: Add Q and R definitions
     end
 
     methods
         % Constructor
-        function obj=DiscreteLinearSystem(varargin)
+        function obj=DiscreteLinearSystem()
             % nothing for now
         end
 
@@ -40,14 +44,34 @@ classdef DiscreteLinearSystem < handle
         % of MPPI or iLQR
         function setDt(obj, dt)
             obj.dt = dt;
+
+            % Update state-space matrices
             obj.A = [eye(2), eye(2)*dt;
                      zeros(2,2), eye(2)];
+            obj.B = [zeros(2, 2);
+                     eye(2)*dt];
         end
 
+        
         % Function to update the state of the system based on current x
         % and u
-        function updateState(obj)
+        function x_new = updateState(obj)
             obj.x = obj.A*obj.x + obj.B*obj.u;
+
+            x_new = obj.x;
+        end
+
+        % Function to update state in the presence of environmental noise
+        function x_new = updateStateNoisy(obj)
+
+            obj.updateState();
+            
+            % sample environmental noise
+            W = transpose(mvnrnd(zeros(size(obj.x)), ...
+                             obj.sigma_environment, ...
+                             1));
+            obj.x = obj.x + W;
+            x_new = obj.x;
         end
 
         % Set the current control input
@@ -75,7 +99,7 @@ classdef DiscreteLinearSystem < handle
                                  num_samples));
         end
 
-        function [x_traj, u_traj] = rolloutTraj(obj, u_init, T)
+        function [x_traj, u_traj, e_traj] = rolloutTraj(obj, u_init, T)
         %% Rollout a single trajectory given initial trajectory of inputs
         %   and the time horizon T
         %
@@ -93,14 +117,62 @@ classdef DiscreteLinearSystem < handle
                 error("incorrect size of u_init! You need one control input column for each of the N = t/obj.dt time steps\n");
             end
 
+            % MOVED TO MPPI
+            %lam = 1
+            %traj_cost = 0
+
             x_traj = zeros(length(obj.x), N); % states along the trajectory
-            u_traj = u_init + obj.sampleControlNoise(N); % input trajectory is the initial control trajectory + sampling of control noise
+            e_traj = obj.sampleControlNoise(N);
+            u_traj = u_init + e_traj; % input trajectory is the initial control trajectory + sampling of control noise
             u_traj = obj.clipControl(u_traj);
+
             for i = 1:N
                 obj.setControl(u_traj(:, i)); % set system control
                 obj.updateState(); % update state to roll forward
                 x_traj(:, i) = obj.x; % record the current state
+
+                % MOVED TO MPPI traj_cost = traj_cost +running_cost(lam,e_traj(:,i))
             end
+            % MOVED TO MPPI traj_cost = traj_cost+terminal_cost()
         end
+
+        %% Computing Costs and Contraints
+
+        % NIKI: add calculateCost method
+
+        % MOVED TO MPPI
+        %{
+        function rc= running_cost(obj,lam,eT)
+            %Lagrange Multiplier, lam
+            %extarct states
+            xt = obj.x(1);
+            yt = obj.x(2);
+            vx = obj.x(3);
+            vy = obj.x(4);
+            rc_state= (sqrt(vx^2+vy^2)-obj.vdes)^2+1000*check_constraints(xt,yt);
+            rc_control = lam*obj.u.T*obj.sigma_control*eT;
+            rc = rc_state + rc_control
+            
+        end
+        
+        function cost = CostFunction(obj,X)
+            xt = X(1);
+            yt = X(2); 
+            vx = X(3); 
+            vy = X(4);
+            cost = (sqrt(vx^2+vy^2)-obj.vdes)^2+1000*check_constraints(xt,yt)
+            
+        end
+
+        function flag = check_constraints(obj,x,y)
+            flag = and(1.875 < sqrt(x^2+y^2), sqrt(x^2+y^2) <2.125);
+
+        end
+
+        function tc = terminal_cost(obj)
+            tc = 0;
+        end
+        %}
+
     end
 end

@@ -8,8 +8,11 @@ clc
 %% Initialize the workspace and include folders
 initWorkspace();
 
+%% Filename to save to
+fname = 'MPPI_baseline';
+
 %% Simulation setup
-T_sim = 50; % time duration of simulation
+T_sim = 100; % time duration of simulation
 dt = 0.01; % sampling period of simulation
 
 % create physical system model
@@ -55,6 +58,14 @@ track.plotTrack();
 mppi_run_flag = 0;
 xlim([-5, 1]);
 ylim([-3, 3]);
+
+% keep track of trajectories (t = 0 -> t = N)
+x_hist = zeros(length(car.x), length(0:1/f_iLQG:T_sim) + 1);
+u_ilqg_hist = zeros(length(car.u), length(x_hist(1,:)));
+u_mppi_hist = zeros(length(car.u), length(x_hist(1,:)));
+x_mppi_hist = zeros(length(car.x), length(x_hist(1,:)));
+x_mppi_traj_hist = cell(1, length(x_hist(1,:))); % the chosen rollout
+t_step = 1;
 for t = 0:1/f_iLQG:T_sim
 
     if(mod(floor(1000*t), floor(1000*MPPI.dt)) == 0)
@@ -73,11 +84,22 @@ for t = 0:1/f_iLQG:T_sim
     u_ilqg = 0; %ilqg.solve(state_error, u_mppi(:, 1));
 
     %% Update state of the actual system given the inputs from MPPI and iLQG
-    car.setControl(u_ilqg + u_mppi(:, 1));
-    car.updateState();
+    car.setControl(u_ilqg + u_mppi(:, 1) + car.sampleControlNoise(1));
+    x_hist(:, t_step + 1) = car.updateState();
+
+    % Save our trajectories
+    x_mppi_hist(:, t_step + 1) = x_mppi(:, 1);
+    x_mppi_traj_hist{:, t_step + 1} = MPPI.x_traj;
+    u_mppi_hist(:, t_step) = u_mppi(:, 1);
+    u_ilqg_hist(:, t_step) = u_ilqg(:, 1);
 
     %% Plot car
     %track.plotTrack();
     car.plotSystem(); % plot position and orientation of our car
     drawnow();
+
+    t_step = t_step + 1;
 end
+
+%% Save everything 
+save(fname);

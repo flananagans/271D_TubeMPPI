@@ -20,7 +20,7 @@ car = DiscreteLinearSystem(); % right now this is a double integrator
 car.setDt(dt);
 
 % set the car's actual noise
-%car.sigma_control = 10*car.sigma_control;
+car.sigma_control = 10*car.sigma_control;
 
 %% Create track
 % ring track from paper point mass example
@@ -52,6 +52,20 @@ car_iLQG.setDt(1/f_iLQG); % set sampling time to match iLQG frequency
 
 ilqg = iLQG(car_iLQG);
 
+% create PID instance
+Kp = eye(4);
+Kd = eye(4);
+Ki = eye(4); %zeros(4)
+PID = PID_Controller(Kp,Ki,Kd,dt);
+
+%create LQR instance
+Q = diag([1,1,1,1]);
+R = diag([1,1]);
+A = car_iLQG.A;
+B = car_iLQG.B;
+K = dlqr(A,B,Q,R);
+
+
 %% Run the simulation
 figure('Name', 'HW2 Oval Track');
 track.plotTrack();
@@ -67,7 +81,6 @@ x_mppi_hist = zeros(length(car.x), length(x_hist(1,:)));
 x_mppi_traj_hist = cell(1, length(x_hist(1,:))); % the chosen rollout
 t_step = 1;
 for t = 0:1/f_iLQG:T_sim
-
     if(mod(floor(1000*t), floor(1000*MPPI.dt)) == 0)
         %% Update MPPI at a slower rate to get the current input
         
@@ -81,7 +94,8 @@ for t = 0:1/f_iLQG:T_sim
     %% Get input for this step from iLQG
     % NIKI - check this
     state_error = x_mppi(:, 1) - car.x; % x0 for iLQG
-    u_ilqg = 0; %ilqg.solve(state_error, u_mppi(:, 1));
+    u_ilqg = -K*state_error; %ilqg.solve(state_error, u_mppi(:, 1));
+    
 
     %% Update state of the actual system given the inputs from MPPI and iLQG
     car.setControl(u_ilqg + u_mppi(:, 1) + car.sampleControlNoise(1));

@@ -7,7 +7,7 @@ clc
 initWorkspace();
 
 %% Load data
-load('MPPI_lownoise.mat');
+load('MPPI_lownoise_lqr.mat');
 
 %% Plot the trajectory
 figure();

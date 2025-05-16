@@ -65,6 +65,11 @@ classdef DiscreteLinearSystem < handle
             x_new = obj.x;
         end
 
+        %dynamics function for iLQG
+        function x_new = sysDyn(obj,x,u)
+            x_new = obj.A*x + obj.B*u;
+        end
+
         % Function to update state in the presence of environmental noise
         function x_new = updateStateNoisy(obj)
 

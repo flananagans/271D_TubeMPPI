@@ -1,10 +1,11 @@
 %make a class for iLQG, put params in and then the method is the function
 
-classdef iLQG
+classdef iLQG_hw
     properties
         car = []; %car object
         
-        lims = []; %control limits
+        lims = [-.5 .5;         % wheel angle limits (radians)
+             -2  2]; %control limits
         parallel = true; %use parallel line-search?
         Alpha = 10.^linspace(0,-3,11); %backtracking coefficients
         tolFun = 1e-7; %reduction exit critereon
@@ -28,7 +29,7 @@ classdef iLQG
     methods
 
         % Constructor
-        function obj = iLQG(system)
+        function obj = iLQG_hw(system)
 
             % NIKI: If you need the sampling time, that is given by
             % system.dt
@@ -391,6 +392,7 @@ classdef iLQG
         end
 
         function [xnew,unew,cnew] = forward_pass(x0,u,L,x,du,Alpha,DYNCST,lims,diff)
+
         % parallel forward-pass (rollout)
         % internally time is on the 3rd dimension, 
         % to facillitate vectorized dynamics calls
@@ -549,7 +551,7 @@ classdef iLQG
             iu = 5:6;
             
             % dynamics first derivatives
-            xu_dyn  = @obj.car.updateState;
+            xu_dyn  = [obj.car.x;obj.car.u];
             J       = finite_difference(xu_dyn, [x; u]);
             fx      = J(:,ix,:);
             fu      = J(:,iu,:);

@@ -12,8 +12,7 @@ This repository is organized into one main script (located in the `main` folder)
 ### Relevant files for HW2:          
 ```ruby
 ├── main
-    ├── hw2_main.m # main script to run simulation
-    ├── initWorkspace.m # adds classes to path
+    ├── hw2_main.m # main script to run simulation (ancillary LQR created here)
     └── plotTrajectory.m # used to create figures
 ├── MPPI # class defining the MPPI controller
     └── MPPI_Controller.m

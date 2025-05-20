@@ -15,9 +15,11 @@ track.plotTrack()
 
 x_hist(x_hist == 0) = NaN;
 plot(x_hist(1,:), x_hist(2,:))
+scatter(0,0, 15, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
 xlabel('x position (m)')
 ylabel('y position (m)')
-
+xlim([-5, 1])
+ylim([-3, 3])
 
 %% High noise no ancillary, multiple starts
 
@@ -33,3 +35,5 @@ end
 scatter(0,0, 15, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
 xlabel('x position (m)')
 ylabel('y position (m)')
+xlim([-5, 1])
+ylim([-3, 3])

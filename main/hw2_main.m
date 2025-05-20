@@ -57,26 +57,27 @@ car_MPPI.setDt(1/f_MPPI); % set sampling time to match MPPI frequency
 MPPI = MPPI_Controller(car_MPPI, track, K_MPPI, T_MPPI);
 MPPI.v_des = v_des; % set desired speed
 
-% iLQG
-f_iLQG = 1/dt; % frequency of the iLQG controller
+% Ancillary controller
+f_anc = 1/dt; % frequency of the ancillary controller
 
 % create iLQG controller instance
-car_iLQG = DiscreteLinearSystem();
-car_iLQG.setDt(1/f_iLQG); % set sampling time to match iLQG frequency
+car_anc = DiscreteLinearSystem();
+car_anc.setDt(1/f_anc); % set sampling time to match iLQG frequency
 
-ilqg = iLQG_hw(car_iLQG);
+% create iLQG instance
+%ilqg = iLQG_hw(car_iLQG);
 
 % create PID instance
-Kp = eye(4);
-Kd = eye(4);
-Ki = eye(4); %zeros(4)
-PID = PID_Controller(Kp,Ki,Kd,dt);
+%Kp = eye(4);
+%Kd = eye(4);
+%Ki = eye(4); %zeros(4)
+%PID = PID_Controller(Kp,Ki,Kd,dt);
 
 %create LQR instance
 Q = diag([1,1,1,1]);
 R = diag([0.1,0.1]);
-A = car_iLQG.A;
-B = car_iLQG.B;
+A = car_anc.A;
+B = car_anc.B;
 K = dlqr(A,B,Q,R);
 
 %% Run the simulation
@@ -87,14 +88,14 @@ xlim([-5, 1]);
 ylim([-3, 3]);
 
 % keep track of trajectories (t = 0 -> t = N)
-x_hist = zeros(length(car.x), length(0:1/f_iLQG:T_sim) + 1);
-u_ilqg_hist = zeros(length(car.u), length(x_hist(1,:)));
+x_hist = zeros(length(car.x), length(0:1/f_anc:T_sim) + 1);
+u_anc_hist = zeros(length(car.u), length(x_hist(1,:)));
 u_mppi_hist = zeros(length(car.u), length(x_hist(1,:)));
 u_tot_hist = zeros(length(car.u), length(x_hist(1,:)));
 x_mppi_hist = zeros(length(car.x), length(x_hist(1,:)));
 x_mppi_traj_hist = cell(1, length(x_hist(1,:))); % the chosen rollout
 t_step = 1;
-for t = 0:1/f_iLQG:T_sim
+for t = 0:1/f_anc:T_sim
     if(mod(floor(1000*t), floor(1000*MPPI.dt)) == 0)
         %% Update MPPI at a slower rate to get the current input
         
@@ -103,23 +104,23 @@ for t = 0:1/f_iLQG:T_sim
         MPPI.plotController(); % function to plot all trajectories
     end
 
-    %% Get input for this step from iLQG
+    %% Get input for this step from ancillary controller
     if(has_ancillary)
-        state_error = x_mppi(:, 1) - car.x; % x0 for iLQG
-        u_ilqg = K*state_error; %ilqg.solve(state_error, u_mppi(:, 1));
+        state_error = x_mppi(:, 1) - car.x; % x0 for ancillary
+        u_anc = K*state_error; 
     else
-        u_ilqg = 0;
+        u_anc = 0;
     end
 
     %% Update state of the actual system given the inputs from MPPI and iLQG
-    car.setControl(u_ilqg + u_mppi(:, 1) + car.sampleControlNoise(1));
+    car.setControl(u_anc + u_mppi(:, 1) + car.sampleControlNoise(1));
     x_hist(:, t_step + 1) = car.updateState();
 
     % Save our trajectories
     x_mppi_hist(:, t_step + 1) = x_mppi(:, 1);
     x_mppi_traj_hist{:, t_step + 1} = MPPI.x_traj;
     u_mppi_hist(:, t_step) = u_mppi(:, 1);
-    u_ilqg_hist(:, t_step) = u_ilqg(:, 1);
+    u_anc_hist(:, t_step) = u_anc(:, 1);
     u_tot_hist(:, t_step) = car.u;
 
     %% Plot car

@@ -9,10 +9,10 @@ Recreating and extending the work of a Tube-MPPI controller as described by Will
 ## File Overview
 This repository is organized into one main script (located in the `main` folder) that runs the simulation using instances of classes defined in the other folders
 
-### Relevant files:          
+### Relevant files for HW2:          
 ```ruby
 ├── main
-    ├── hw2_main # main script to run simulation
+    ├── hw2_main.m # main script to run simulation
     ├── initWorkspace.m # adds classes to path
     └── plotTrajectory.m # used to create figures
 ├── MPPI # class defining the MPPI controller

@@ -9,12 +9,13 @@ classdef OvalTrack < Track
     
     properties
         boundaries = struct('width', 5, 'radius', 3, 'straightlength', 10); % limits of track
-        obstacle = struct('active', false, 'xlim', [-0.5, 0.5], 'ylim', [7, 8]);
-        obstacle_spawn_ylim = 2; % spawn obstacle once state passes this line
+        obstacle = struct('active', false, 'xlim', [-0.75, -0.25], 'ylim', [1.75, 2.25]);
+        obstacle_spawn_ylim = 0.5; % spawn obstacle once state passes this line
     end
 
     properties (Access=private)
         obstacle_plothandle = [];
+        track_plotted = false;
     end
     
     methods
@@ -117,22 +118,26 @@ classdef OvalTrack < Track
             hold on
             axis equal;
 
+            % Only plot track once
+            if(~obj.track_plotted)
+                obj.track_plotted = true;
 
-            if(obj.boundaries.straightlength > 0)
-            % We may not have a straight if the track is a ring
-                % plot first straight
-                plotStraight([0;0], obj.boundaries.width, obj.boundaries.straightlength, [0;1]);
+                if(obj.boundaries.straightlength > 0)
+                % We may not have a straight if the track is a ring
+                    % plot first straight
+                    plotStraight([0;0], obj.boundaries.width, obj.boundaries.straightlength, [0;1]);
+        
+                    % plot second straight
+                    plotStraight([-1*(obj.boundaries.width + 2*obj.boundaries.radius);0], obj.boundaries.width, obj.boundaries.straightlength, [0;1]);
+                end
     
-                % plot second straight
-                plotStraight([-1*(obj.boundaries.width + 2*obj.boundaries.radius);0], obj.boundaries.width, obj.boundaries.straightlength, [0;1]);
+                % plot top curve
+                plotCurve([0; obj.boundaries.straightlength], obj.boundaries.width, obj.boundaries.radius, [-1;0]);
+    
+                % plot bottom curve
+                plotCurve([-1*(obj.boundaries.width + 2*obj.boundaries.radius); 0], obj.boundaries.width, obj.boundaries.radius, [1;0]);
             end
 
-            % plot top curve
-            plotCurve([0; obj.boundaries.straightlength], obj.boundaries.width, obj.boundaries.radius, [-1;0]);
-
-            % plot bottom curve
-            plotCurve([-1*(obj.boundaries.width + 2*obj.boundaries.radius); 0], obj.boundaries.width, obj.boundaries.radius, [1;0]);
-        
             %% Obstacle
             if(obj.obstacle.active && isempty(obj.obstacle_plothandle))
                 % plot obstacle

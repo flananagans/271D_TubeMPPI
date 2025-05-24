@@ -81,8 +81,9 @@ classdef MPPI_Controller < handle
                 N = obj.T/obj.dt;
                 for t = 1:N-1
                     %compute the running cost 
-                    cc = obj.track.checkTrackLimits(x_traj_k(1:2,t));
-                    traj_cost = traj_cost + obj.runningCost(x_traj_k(:,t+1), u_traj_k(:,t), e_traj_k(:,t), cc);
+                    cc = obj.track.checkTrackLimits(x_traj_k(1:2,t)); % do we go out of the track
+                    co = obj.track.checkObstacles(x_traj_k(1:2,t)); % do we hit an obstacle
+                    traj_cost = traj_cost + obj.runningCost(x_traj_k(:,t+1), u_traj_k(:,t), e_traj_k(:,t), cc, co);
                 end
                 traj_cost = traj_cost + obj.terminalCost(x_traj_k(:, end)); 
                 
@@ -121,9 +122,10 @@ classdef MPPI_Controller < handle
                 X(:, t) = obj.system.updateState();
                 X_curr = X(:, t);
                 CC = obj.track.checkTrackLimits(X_curr(1:2));
+                CO = obj.track.checkObstacles(X_curr(1:2));
                 
                 % SHIRLEY: update for MPPI cost
-                S = obj.runningCost(X(:, t), U(:,t), E(:, t), CC) + S;
+                S = obj.runningCost(X(:, t), U(:,t), E(:, t), CC, CO) + S;
             end
             % SHIRLEY: update for MPPI cost
             S = obj.terminalCost(X(:, end)) + S;
@@ -170,14 +172,14 @@ classdef MPPI_Controller < handle
         %}
 
         % Referring to algorithm in the paper and equations 13 & 14
-        function cost = runningCost(obj, x_t, u_t, e_t,  CC)
+        function cost = runningCost(obj, x_t, u_t, e_t,  CC, CO)
 
             % Get velocity of system
             vx = x_t(3); 
             vy = x_t(4);
 
             %calculate the cost of the states and control
-            cost_states = (sqrt(vx^2 + vy^2) - obj.v_des)^2 + 1000*CC;
+            cost_states = (sqrt(vx^2 + vy^2) - obj.v_des)^2 + 1000*CC + 5000*CO;
             cost_control = obj.lambda*(u_t'/obj.system.sigma_control)*e_t;
             cost = cost_states + cost_control;
         end

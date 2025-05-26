@@ -9,10 +9,13 @@ clc
 has_high_noise = true; % actual control noise 10x modeled
 has_ancillary = true; % activate ancillary controller
 
-captureVideo = true;
+captureVideo = false;
 
 %% Initialize the workspace and include folders
 initWorkspace();
+
+%% Iterate to collect calibration data
+for ct = 1:50
 
 %% Filename to save to
 fname = 'MPPI';
@@ -22,7 +25,7 @@ else
     fname = [fname, '_lownoise'];
 end
 if(has_ancillary)
-    fname = [fname, '_lqr'];
+    fname = [fname, '_lqr', sprintf('_%02d', ct)];
 end
 
 %% Simulation setup
@@ -32,7 +35,7 @@ dt = 0.01; % sampling period of simulation
 % create physical system model
 car = DiscreteLinearSystem(); % right now this is a double integrator
 car.setDt(dt);
-car.x(4) = 0.1; % small positive Y velocity
+car.x(4) = 0.2; % small positive Y velocity
 
 % set the car's actual noise
 if(has_high_noise)
@@ -93,6 +96,7 @@ end
 %% Run the simulation
 figure('Name', 'HW2 Oval Track');
 track.plotTrack();
+axis equal;
 mppi_run_flag = 0;
 xlim([-5, 1]);
 ylim([-3, 5]);
@@ -104,17 +108,26 @@ u_mppi_hist = zeros(length(car.u), length(x_hist(1,:)));
 u_tot_hist = zeros(length(car.u), length(x_hist(1,:)));
 x_mppi_hist = zeros(length(car.x), length(x_hist(1,:)));
 x_mppi_traj_hist = cell(1, length(x_hist(1,:))); % the chosen rollout
-t_step = 1;
+obs_isactive = false(1, length(x_hist(1,:))); % is the obstacle active
+obs_hit = false(1, length(x_hist(1,:))); % is the obstacle hit
+outside_track = false(1, length(x_hist(1,:))); % is car oustide track
+t_arr = zeros(1, length(x_hist(1,:))); % time array
 
 % TO ADD:
 % object position
 % if object active
 % if outside track
 % if inside object
-%
-%   LOOP 50 times and save to each
 
-for t = 0:1/f_anc:T_sim
+t = 0;
+t_step = 1;
+while( (~track.checkObstacles(x_hist(1:2, t_step))) && ...
+       (~track.checkTrackLimits(x_hist(1:2, t_step))) && ...
+       (x_hist(1, t_step) > -2) && (t < T_sim - 1) )
+
+    t = 1/f_anc * (t_step - 1);
+    t_arr(t_step) = t;
+
     if(mod(floor(1000*t), floor(1000*MPPI.dt)) == 0)
         %% Update MPPI at a slower rate to get the current input
         
@@ -142,6 +155,14 @@ for t = 0:1/f_anc:T_sim
     u_anc_hist(:, t_step) = u_anc(:, 1);
     u_tot_hist(:, t_step) = car.u;
 
+    obs_isactive(t_step + 1) = track.obstacle.active;
+    obs_hit(t_step + 1) = track.checkObstacles(x_hist(1:2, t_step + 1));
+    outside_track(t_step + 1) = track.checkTrackLimits(x_hist(1:2, t_step + 1));
+
+    if( (t_step > 1) && (obs_isactive(t_step - 1) ~= obs_isactive(t_step)) )
+        fprintf("Obstacle activated at y = %0.2f\n", x_hist(2, t_step + 1));
+    end
+
     %% Plot car/track
     track.spawnObstacles(car.x(1:2)); % Check for obstacle spawning
     car.plotSystem(); % plot position and orientation of our car
@@ -168,4 +189,9 @@ save(fname);
 
 if(captureVideo)
     close(v);
+end
+
+% close figure
+close all
+
 end

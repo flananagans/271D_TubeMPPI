@@ -9,8 +9,11 @@ classdef OvalTrack < Track
     
     properties
         boundaries = struct('width', 5, 'radius', 3, 'straightlength', 10); % limits of track
+        
         obstacle = struct('active', false, 'xlim', [-0.75, -0.25], 'ylim', [1.75, 2.25]);
-        obstacle_spawn_ylim = 0.5; % spawn obstacle once state passes this line
+        obstacle_spawn_ylim = 1;
+        obstacle_spawn_mean = 1; % spawn obstacle once state passes this line
+        obstacle_spawn_var = 0.05;
     end
 
     properties (Access=private)
@@ -39,6 +42,9 @@ classdef OvalTrack < Track
 
             % Set boundaries
             obj.boundaries = struct('width', w, 'radius', r, 'straightlength', sl);
+
+            % Set obstacle spawn ylim
+            obj.obstacle_spawn_ylim = mvnrnd(obj.obstacle_spawn_mean, obj.obstacle_spawn_var, 1);
         end
 
         % set straight length of track
@@ -110,13 +116,18 @@ classdef OvalTrack < Track
             end
         end
 
+        function resetPlotter(obj)
+        % call this to reset plotting flags so you can replot a track later
+            obj.track_plotted = false;
+            obj.obstacle_plothandle = [];
+        end
+
         function plotTrack(obj)
             % plots the current track state
         
             %% Track
             % Plot boundaries
             hold on
-            axis equal;
 
             % Only plot track once
             if(~obj.track_plotted)

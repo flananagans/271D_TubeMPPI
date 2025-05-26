@@ -105,6 +105,15 @@ u_tot_hist = zeros(length(car.u), length(x_hist(1,:)));
 x_mppi_hist = zeros(length(car.x), length(x_hist(1,:)));
 x_mppi_traj_hist = cell(1, length(x_hist(1,:))); % the chosen rollout
 t_step = 1;
+
+% TO ADD:
+% object position
+% if object active
+% if outside track
+% if inside object
+%
+%   LOOP 50 times and save to each
+
 for t = 0:1/f_anc:T_sim
     if(mod(floor(1000*t), floor(1000*MPPI.dt)) == 0)
         %% Update MPPI at a slower rate to get the current input

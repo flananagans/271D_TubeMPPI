@@ -10,7 +10,8 @@ classdef OvalTrack < Track
     properties
         boundaries = struct('width', 5, 'radius', 3, 'straightlength', 10); % limits of track
         
-        obstacle = struct('active', false, 'xlim', [-0.75, -0.25], 'ylim', [1.75, 2.25]);
+        % circular obstacle
+        obstacle = struct('active', false, 'center', [-0.625; 2], 'radius', 0.25);
         obstacle_spawn_ylim = 1;
         obstacle_spawn_mean = 1; % spawn obstacle once state passes this line
         obstacle_spawn_var = 0.05;
@@ -98,13 +99,25 @@ classdef OvalTrack < Track
 
             if(obj.obstacle.active)
                 % check if state is inside boundary
-                in_obstacle = ((system_pos(1) >= obj.obstacle.xlim(1)) && ...
-                              (system_pos(1) <= obj.obstacle.xlim(2))) && ...
-                              ((system_pos(2) >= obj.obstacle.ylim(1)) && ...
-                              (system_pos(2) <= obj.obstacle.ylim(2)));
+                
+                in_obstacle = obj.getObstacleDistance(system_pos) < 0;
             else
                 % no obstacles
                 in_obstacle = false;
+            end
+        end
+
+        function d = getObstacleDistance(obj, system_pos)
+        % Function to get the distance of a system to the edge of the
+        %   obstacle
+        %
+        %   system_pos: position of system in [x;y]
+
+            if(obj.obstacle.active)
+                d = vecnorm(obj.obstacle.center - system_pos) ...
+                            - obj.obstacle.radius;
+            else
+                d = NaN;
             end
         end
 
@@ -153,10 +166,10 @@ classdef OvalTrack < Track
             if(obj.obstacle.active && isempty(obj.obstacle_plothandle))
                 % plot obstacle
     
-                patch_x = [obj.obstacle.xlim(1), obj.obstacle.xlim(2), ...
-                           obj.obstacle.xlim(2), obj.obstacle.xlim(1)];
-                patch_y = [obj.obstacle.ylim(1), obj.obstacle.ylim(1), ...
-                           obj.obstacle.ylim(2), obj.obstacle.ylim(2)];
+                thetas = linspace(0, 2*pi, 100);
+
+                patch_x = obj.obstacle.center(1) + obj.obstacle.radius*cos(thetas);
+                patch_y = obj.obstacle.center(2) + obj.obstacle.radius*sin(thetas);
 
                 obj.obstacle_plothandle = patch(patch_x, patch_y, 'k');
             elseif(~isempty(obj.obstacle_plothandle) && ~obj.obstacle.active)

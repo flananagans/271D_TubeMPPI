@@ -10,6 +10,7 @@ has_high_noise = true; % actual control noise 10x modeled
 has_ancillary = true; % activate ancillary controller
 
 captureVideo = false;
+toPlot = true;
 
 %% Initialize the workspace and include folders
 initWorkspace();
@@ -94,12 +95,14 @@ if(captureVideo)
 end
 
 %% Run the simulation
-figure('Name', 'HW2 Oval Track');
-track.plotTrack();
-axis equal;
-mppi_run_flag = 0;
-xlim([-5, 1]);
-ylim([-3, 5]);
+if(toPlot)
+    figure('Name', 'HW2 Oval Track');
+    track.plotTrack();
+    axis equal;
+    mppi_run_flag = 0;
+    xlim([-5, 1]);
+    ylim([-3, 5]);
+end
 
 % keep track of trajectories (t = 0 -> t = N)
 x_hist = zeros(length(car.x), length(0:1/f_anc:T_sim) + 1);
@@ -133,7 +136,10 @@ while( (~track.checkObstacles(x_hist(1:2, t_step))) && ...
         
         [u_mppi, x_mppi] = MPPI.RunMPPI(car.x); % Shirley--> whatever this function
                                                 % is called
-        MPPI.plotController(); % function to plot all trajectories
+
+        if(toPlot)
+            MPPI.plotController(); % function to plot all trajectories
+        end
     end
 
     %% Get input for this step from ancillary controller
@@ -162,30 +168,43 @@ while( (~track.checkObstacles(x_hist(1:2, t_step))) && ...
     if( (t_step > 1) && (obs_isactive(t_step - 1) ~= obs_isactive(t_step)) )
         fprintf("Obstacle activated at y = %0.2f\n", x_hist(2, t_step + 1));
     end
+    
+    % Check for obstacle spawning
+    track.spawnObstacles(car.x(1:2));
 
     %% Plot car/track
-    track.spawnObstacles(car.x(1:2)); % Check for obstacle spawning
-    car.plotSystem(); % plot position and orientation of our car
-    track.plotTrack();
-    drawnow();
+    if(toPlot)
+        car.plotSystem(); % plot position and orientation of our car
+        track.plotTrack();
+        xlim([-5, 1]);
+        ylim([-3, 5]);
+        drawnow();
+    end
 
     if(captureVideo)
         frame = getframe(gcf());
         writeVideo(v, frame);
     end
 
-    %% Stop if way outside
+    %% Stop if car goes way outside
     if(car.x(1) > 1 || car.x(1) < -5 || abs(car.x(2)) > 3)
         break;
     end
 
-    xlim([-5, 1]);
-    ylim([-3, 5]);
     t_step = t_step + 1;
 end
 
 %% Remove unfilled data
-
+x_hist = x_hist(:, 1:t_step); 
+u_anc_hist = u_anc_hist(:, 1:t_step); 
+u_mppi_hist = u_mppi_hist(:, 1:t_step); 
+u_tot_hist = u_tot_hist(:, 1:t_step); 
+x_mppi_hist = x_mppi_hist(:, 1:t_step); 
+x_mppi_traj_hist = x_mppi_traj_hist(:, 1:t_step); 
+obs_isactive = obs_isactive(:, 1:t_step); 
+obs_hit = obs_hit(:, 1:t_step); 
+outside_track = outside_track(1:t_step); 
+t_arr = t_arr(1:t_step);
 
 %% Save everything 
 save(fname);

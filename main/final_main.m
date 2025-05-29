@@ -184,6 +184,9 @@ while( (~track.checkObstacles(x_hist(1:2, t_step))) && ...
     t_step = t_step + 1;
 end
 
+%% Remove unfilled data
+
+
 %% Save everything 
 save(fname);
 

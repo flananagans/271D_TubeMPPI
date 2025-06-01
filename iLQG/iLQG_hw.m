@@ -34,7 +34,7 @@ classdef iLQG_hw
             % NIKI: If you need the sampling time, that is given by
             % system.dt
             obj.car = system;
-            obj.DYNCST = @(x,u,i) car_dyn_cst(x,u);
+            obj.DYNCST = @(x,u,i) obj.car_dyn_cst(x,u,i);
 
         end
 
@@ -433,6 +433,49 @@ classdef iLQG_hw
         cnew = permute(cnew, [1 3 2]);
         end
 
+%         function [xnew,unew,cnew] = forward_pass(x0,u,L,x,du,Alpha,DYNCST,lims,diff)
+%             n        = size(x0,1);
+%             K        = length(Alpha);
+%             m        = size(u,1);
+%             N        = size(u,2);
+%             
+%             xnew        = zeros(n,K,N+1);
+%             xnew(:,:,1) = repmat(x0, 1, K);   % [n x K]
+%             unew        = zeros(m,K,N);
+%             cnew        = zeros(1,K,N+1);
+%         
+%             for i = 1:N
+%                 % broadcast u
+%                 unew(:,:,i) = repmat(u(:,i), 1, K);
+%                 
+%                 if ~isempty(du)
+%                     unew(:,:,i) = unew(:,:,i) + du(:,i) * Alpha;
+%                 end    
+%                 
+%                 if ~isempty(L)
+%                     if ~isempty(diff)
+%                         dx = diff(xnew(:,:,i), repmat(x(:,i),1,K));
+%                     else
+%                         dx = xnew(:,:,i) - repmat(x(:,i),1,K);
+%                     end
+%                     unew(:,:,i) = unew(:,:,i) + L(:,:,i) * dx;
+%                 end
+%                 
+%                 if ~isempty(lims)
+%                     unew(:,:,i) = min(repmat(lims(:,2),1,K), max(repmat(lims(:,1),1,K), unew(:,:,i)));
+%                 end
+%         
+%                 [xnew(:,:,i+1), cnew(:,:,i)]  = DYNCST(xnew(:,:,i), unew(:,:,i), i);
+%             end
+%         
+%             [~, cnew(:,:,N+1)] = DYNCST(xnew(:,:,N+1),nan(m,K),N+1);
+%         
+%             % put time dimension in the 2nd index
+%             xnew = permute(xnew, [1 3 2]);
+%             unew = permute(unew, [1 3 2]);
+%             cnew = permute(cnew, [1 3 2]);
+%         end
+
         function [diverge, Vx, Vxx, k, K, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,regType,lims,u)
         % Perform the Ricatti-Mayne backward pass
         % tensor multiplication for DDP terms
@@ -531,10 +574,15 @@ classdef iLQG_hw
         end
 
         
-        function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = car_dyn_cst(obj,x,u)
+        function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = car_dyn_cst(obj,x,u,i)
         % combine car dynamics and cost
         % use helper function finite_difference() to compute derivatives
-        
+
+        assert(isnumeric(obj.car.x) && all(isfinite(obj.car.x(:))), 'Error: obj.car.x is not numeric or contains invalid values.');
+        cost = obj.car.calculateCost;
+        assert(isnumeric(cost) && isscalar(cost), 'Error: obj.car.calculateCost did not return a valid scalar.');
+        assert(nargout == 2, 'car_dyn_cst should return exactly 2 outputs.');
+
         %give new state and control inputs to system
         obj.car.x = x;
         obj.car.setControl(u);
@@ -551,8 +599,8 @@ classdef iLQG_hw
             iu = 5:6;
             
             % dynamics first derivatives
-            xu_dyn  = [obj.car.x;obj.car.u];
-            J       = finite_difference(xu_dyn, [x; u]);
+            xu_dyn  = @(xu) obj.sysDyn(xu);
+            J       = obj.finite_difference(xu_dyn, [x; u]);
             fx      = J(:,ix,:);
             fu      = J(:,iu,:);
             
@@ -561,14 +609,14 @@ classdef iLQG_hw
           
             
             % cost first derivatives
-            xu_cost = @obj.car.calculateCost;
-            J       = squeeze(finite_difference(xu_cost, [x; u]));
-            cx      = J(ix,:);
-            cu      = J(iu,:);
+            xu_cost = @(xu) obj.calculateCost(xu);
+            J       = squeeze(obj.finite_difference(xu_cost, [x; u]));
+            cx      = J(:,ix,:);
+            cu      = J(:,iu,:);
             
             % cost second derivatives
-            xu_Jcst = @obj.car.calculateCost;
-            JJ      = finite_difference(xu_Jcst, [x; u]);
+            xu_Jcst = @(xu) obj.calculateCost(xu);
+            JJ      = obj.finite_difference(xu_Jcst, [x; u]);
             JJ      = 0.5*(JJ + permute(JJ,[2 1 3])); %symmetrize
             cxx     = JJ(ix,ix,:);
             cxu     = JJ(ix,iu,:);
@@ -579,28 +627,45 @@ classdef iLQG_hw
         end
 
 
-        function J = finite_difference(fun, x, h)
+        function J = finite_difference(obj, fun, x, h)
         % simple finite-difference derivatives
         % assumes the function fun() is vectorized
         
-        if nargin < 3
+        if nargin < 4
             h = 2^-17;
         end
         
         [n, K]  = size(x);
         H       = [zeros(n,1) h*eye(n)];
         H       = permute(H, [1 3 2]);
-        X       = pp(x, H);
+        X       = x+H;
         X       = reshape(X, n, K*(n+1));
         Y       = fun(X);
         m       = numel(Y)/(K*(n+1));
         Y       = reshape(Y, m, K, n+1);
-        J       = pp(Y(:,:,2:end), -Y(:,:,1)) / h;
+        J       = (Y(:,:,2:end)+ -Y(:,:,1)) / h;
         J       = permute(J, [1 3 2]);
 
         end
+
+        %dynamics function for iLQG
+        function x_new = sysDyn(obj,x)
+            x_new = obj.car.A*x(1:4, :) + obj.car.B*x(5:6, :);
+        end
+
+        % Computing Costs and Contraints
+        function c = calculateCost(obj, x)
+            [row col] = size(x);
+            c = zeros(1, col);
+            for i = 1:col
+                c(1,i) = x(1:4,i)'*obj.car.Q*x(1:4,i) + x(5:6,i)'*obj.car.R*x(5:6,i);
+            end
+            
+        end
+
 
 
     end
 
 end
+

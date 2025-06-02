@@ -22,6 +22,9 @@ addpath(genpath(fullfile(base_dir, 'PID')));
 % add LQR
 addpath(genpath(fullfile(base_dir, 'LQR')));
 
+% add observor class 
+addpath(genpath(fullfile(base_dir, 'DistanceSensor')))
+
 % Plotting things
 ax_fmt = struct('Box', 'off', 'TickLabelInterpreter', 'none', 'FontSize', 8, 'FontName', 'Arial');
 fig_fmt = struct('Units', 'inches');

@@ -137,13 +137,13 @@ classdef iLQG_hw
                 'time_derivs',nan,'time_forward',nan,'time_backward',nan);
         trace = repmat(trace,[min(obj.maxIter,1e6) 1]);
         trace(1).iter = 1;
-        trace(1).lambda = lambda;
-        trace(1).dlambda = dlambda;
+        trace(1).lambda = obj.lambda;
+        trace(1).dlambda = obj.dlambda;
         % --- initial trajectory
         if size(x0,2) == 1
             diverge = true;
             for alpha = obj.Alpha
-                [x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,DYNCST,obj.lims,[]);
+                [x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,obj.DYNCST,obj.lims,[]);
                 % simplistic divergence test
                 if all(abs(x(:)) < 1e8)
                     u = un;

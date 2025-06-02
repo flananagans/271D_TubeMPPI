@@ -64,6 +64,12 @@ car_MPPI.setDt(1/f_MPPI); % set sampling time to match MPPI frequency
 MPPI = MPPI_Controller(car_MPPI, track, K_MPPI, T_MPPI);
 MPPI.v_des = v_des; % set desired speed
 
+obs_mean = [0;0]; 
+obs_var = [0.5 0; 0 0.5];
+
+
+sensor = Distance_Sensor(obs_mean, obs_var);
+
 % Ancillary controller
 f_anc = 1/dt; % frequency of the ancillary controller
 

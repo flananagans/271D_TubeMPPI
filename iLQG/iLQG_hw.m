@@ -143,7 +143,48 @@ classdef iLQG_hw
         if size(x0,2) == 1
             diverge = true;
             for alpha = obj.Alpha
-                [x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,obj.DYNCST,obj.lims,[]);
+                %[x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,DYNCST,obj.lims,[]);
+                %% start forward pass
+                x0 = x0(:,1); u = alpha*u; L = []; x = []; du = []; Alpha = 1; lims = obj.lims; diff = [];
+                n        = size(x0,1);
+                K        = length(Alpha);
+                K1       = ones(1,K); % useful for expansion
+                m        = size(u,1);
+                N        = size(u,2);
+                xnew        = zeros(n,K,N);
+                xnew(:,:,1) = x0(:,ones(1,K));
+                unew        = zeros(m,K,N);
+                cnew        = zeros(1,K,N+1);
+                for i = 1:N
+                    unew(:,:,i) = u(:,i*K1);
+                    
+                    if ~isempty(du)
+                        unew(:,:,i) = unew(:,:,i) + du(:,i)*Alpha;
+                    end    
+                    
+                    if ~isempty(L)
+                        if ~isempty(diff)
+                            dx = diff(xnew(:,:,i), x(:,i*K1));
+                        else
+                            dx          = xnew(:,:,i) - x(:,i*K1);
+                        end
+                        unew(:,:,i) = unew(:,:,i) + L(:,:,i)*dx;
+                    end
+                    
+                    if ~isempty(lims)
+                        unew(:,:,i) = min(lims(:,2*K1), max(lims(:,1*K1), unew(:,:,i)));
+                    end
+                    [xnew(:,:,i+1), cnew(:,:,i)]  = DYNCST(xnew(:,:,i), unew(:,:,i), i*K1);
+                end
+                [~, cnew(:,:,N+1)] = DYNCST(xnew(:,:,N+1),nan(m,K,1),i);
+                % put the time dimension in the columns
+                xnew = permute(xnew, [1 3 2]);
+                unew = permute(unew, [1 3 2]);
+                cnew = permute(cnew, [1 3 2]);
+                x = xnew;
+                un = unew;
+                cost = cnew;
+                %% end forward pass
                 % simplistic divergence test
                 if all(abs(x(:)) < 1e8)
                     u = un;
@@ -184,10 +225,10 @@ classdef iLQG_hw
         print_head  = 6; % print headings every print_head lines
         last_head   = print_head;
         t_start     = tic;
-        if verbosity > 0
-            fprintf('\n=========== begin iLQG ===========\n');
-        end
-        graphics(obj.plot,x,u,cost,zeros(m,n,N),[],[],[],[],[],[],trace,1);
+%         if verbosity > 0
+%             fprintf('\n=========== begin iLQG ===========\n');
+%         end
+%         graphics(obj.plot,x,u,cost,zeros(m,n,N),[],[],[],[],[],[],trace,1);
         for iter = 1:obj.maxIter
             if stop
                 break;
@@ -207,7 +248,106 @@ classdef iLQG_hw
             while ~backPassDone
                 
                 t_back   = tic;
-                [diverge, Vx, Vxx, l, L, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,obj.regType,obj.lims,u);
+                %[diverge, Vx, Vxx, l, L, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,obj.regType,obj.lims,u);
+                %% start back pass function
+                regType = obj.regType; lims = obj.lims;
+                % tensor multiplication for DDP terms
+                vectens = @(a,b) permute(sum(bsxfun(@times,a,b),1), [3 2 1]);
+                N  = size(cx,2);
+                n  = numel(cx)/N;
+                m  = numel(cu)/N;
+                cx    = reshape(cx,  [n N]);
+                cu    = reshape(cu,  [m N]);
+                cxx   = reshape(cxx, [n n N]);
+                cxu   = reshape(cxu, [n m N]);
+                cuu   = reshape(cuu, [m m N]);
+                k     = zeros(m,N-1);
+                K     = zeros(m,n,N-1);
+                Vx    = zeros(n,N);
+                Vxx   = zeros(n,n,N);
+                dV    = [0 0];
+                Vx(:,N)     = cx(:,N);
+                Vxx(:,:,N)  = cxx(:,:,N);
+                diverge  = 0;
+                for i = N-1:-1:1
+                    
+                    Qu  = cu(:,i)      + fu(:,:,i)'*Vx(:,i+1);
+                    Qx  = cx(:,i)      + fx(:,:,i)'*Vx(:,i+1);
+                    Qux = cxu(:,:,i)'  + fu(:,:,i)'*Vxx(:,:,i+1)*fx(:,:,i);
+                    if ~isempty(fxu)
+                        fxuVx = vectens(Vx(:,i+1),fxu(:,:,:,i));
+                        Qux   = Qux + fxuVx;
+                    end
+                    
+                    Quu = cuu(:,:,i)   + fu(:,:,i)'*Vxx(:,:,i+1)*fu(:,:,i);
+                    if ~isempty(fuu)
+                        fuuVx = vectens(Vx(:,i+1),fuu(:,:,:,i));
+                        Quu   = Quu + fuuVx;
+                    end
+                    
+                    Qxx = cxx(:,:,i)   + fx(:,:,i)'*Vxx(:,:,i+1)*fx(:,:,i);
+                    if ~isempty(fxx)
+                        Qxx = Qxx + vectens(Vx(:,i+1),fxx(:,:,:,i));
+                    end
+                    
+                    Vxx_reg = (Vxx(:,:,i+1) + lambda*eye(n)*(regType == 2));
+                    
+                    Qux_reg = cxu(:,:,i)'   + fu(:,:,i)'*Vxx_reg*fx(:,:,i);
+                    if ~isempty(fxu)
+                        Qux_reg = Qux_reg + fxuVx;
+                    end
+                    
+                    QuuF = cuu(:,:,i)  + fu(:,:,i)'*Vxx_reg*fu(:,:,i) + lambda*eye(m)*(regType == 1);
+                    
+                    if ~isempty(fuu)
+                        QuuF = QuuF + fuuVx;
+                    end
+                    
+                    if nargin < 13 || isempty(lims) || lims(1,1) > lims(1,2)
+                        % no control limits: Cholesky decomposition, check for non-PD
+                        [R,d] = chol(QuuF);
+                        if d ~= 0
+                            diverge  = i;
+                            return;
+                        end
+                        
+                        % find control law
+                        kK = -R\(R'\[Qu Qux_reg]);
+                        k_i = kK(:,1);
+                        K_i = kK(:,2:n+1);
+                        
+                    else        % solve Quadratic Program
+                        lower = lims(:,1)-u(:,i);
+                        upper = lims(:,2)-u(:,i);
+                        
+                        [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
+                        if result < 1
+                            diverge  = i;
+                            return;
+                        end
+                        
+                        K_i    = zeros(m,n);
+                        if any(free)
+                            Lfree        = -R\(R'\Qux_reg(free,:));
+                            K_i(free,:)   = Lfree;
+                        end
+                        
+                    end
+                    
+                    % update cost-to-go approximation
+                    dV          = dV + [k_i'*Qu  .5*k_i'*Quu*k_i];
+                    Vx(:,i)     = Qx  + K_i'*Quu*k_i + K_i'*Qu  + Qux'*k_i;
+                    Vxx(:,:,i)  = Qxx + K_i'*Quu*K_i + K_i'*Qux + Qux'*K_i;
+                    Vxx(:,:,i)  = .5*(Vxx(:,:,i) + Vxx(:,:,i)');
+                    
+                    % save controls/gains
+                    k(:,i)      = k_i;
+                    K(:,:,i)    = K_i;
+                end
+                
+                l = k;
+                L = K;
+                %% end backpass function
                 trace(iter).time_backward = toc(t_back);
                 
                 if diverge
@@ -221,6 +361,7 @@ classdef iLQG_hw
                     end
                     continue
                 end
+
                 backPassDone      = 1;
             end
             % check for termination due to small gradient
@@ -581,14 +722,18 @@ classdef iLQG_hw
         assert(isnumeric(obj.car.x) && all(isfinite(obj.car.x(:))), 'Error: obj.car.x is not numeric or contains invalid values.');
         cost = obj.car.calculateCost;
         assert(isnumeric(cost) && isscalar(cost), 'Error: obj.car.calculateCost did not return a valid scalar.');
-        assert(nargout == 2, 'car_dyn_cst should return exactly 2 outputs.');
+        %assert(nargout == 2, 'car_dyn_cst should return exactly 2 outputs.');
 
         %give new state and control inputs to system
         obj.car.x = x;
         obj.car.setControl(u);
 
         %update system state
-        obj.car.updateState;
+        if isnan(obj.car.u )
+            fprintf('control is not a number')
+        else
+            obj.car.updateState;
+        end
 
         if nargout == 2
             f = obj.car.x;
@@ -611,8 +756,8 @@ classdef iLQG_hw
             % cost first derivatives
             xu_cost = @(xu) obj.calculateCost(xu);
             J       = squeeze(obj.finite_difference(xu_cost, [x; u]));
-            cx      = J(:,ix,:);
-            cu      = J(:,iu,:);
+            cx      = J(ix,:);
+            cu      = J(iu,:);
             
             % cost second derivatives
             xu_Jcst = @(xu) obj.calculateCost(xu);

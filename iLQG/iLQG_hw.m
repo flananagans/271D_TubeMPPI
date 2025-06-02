@@ -4,8 +4,7 @@ classdef iLQG_hw
     properties
         car = []; %car object
         
-        lims = [-.5 .5;         % wheel angle limits (radians)
-             -2  2]; %control limits
+        lims = []; %control limits
         parallel = true; %use parallel line-search?
         Alpha = 10.^linspace(0,-3,11); %backtracking coefficients
         tolFun = 1e-7; %reduction exit critereon
@@ -131,6 +130,7 @@ classdef iLQG_hw
         
         lambda   = obj.lambda;
         dlambda  = obj.dlambda;
+        verbosity = obj.print;
         % --- initialize trace data structure
         trace = struct('iter',nan,'lambda',nan,'dlambda',nan,'cost',nan,...
                 'alpha',nan,'grad_norm',nan,'improvement',nan,'reduc_ratio',nan,...
@@ -225,9 +225,9 @@ classdef iLQG_hw
         print_head  = 6; % print headings every print_head lines
         last_head   = print_head;
         t_start     = tic;
-%         if verbosity > 0
-%             fprintf('\n=========== begin iLQG ===========\n');
-%         end
+        if verbosity > 0
+            fprintf('\n=========== begin iLQG ===========\n');
+        end
 %         graphics(obj.plot,x,u,cost,zeros(m,n,N),[],[],[],[],[],[],trace,1);
         for iter = 1:obj.maxIter
             if stop
@@ -574,48 +574,6 @@ classdef iLQG_hw
         cnew = permute(cnew, [1 3 2]);
         end
 
-%         function [xnew,unew,cnew] = forward_pass(x0,u,L,x,du,Alpha,DYNCST,lims,diff)
-%             n        = size(x0,1);
-%             K        = length(Alpha);
-%             m        = size(u,1);
-%             N        = size(u,2);
-%             
-%             xnew        = zeros(n,K,N+1);
-%             xnew(:,:,1) = repmat(x0, 1, K);   % [n x K]
-%             unew        = zeros(m,K,N);
-%             cnew        = zeros(1,K,N+1);
-%         
-%             for i = 1:N
-%                 % broadcast u
-%                 unew(:,:,i) = repmat(u(:,i), 1, K);
-%                 
-%                 if ~isempty(du)
-%                     unew(:,:,i) = unew(:,:,i) + du(:,i) * Alpha;
-%                 end    
-%                 
-%                 if ~isempty(L)
-%                     if ~isempty(diff)
-%                         dx = diff(xnew(:,:,i), repmat(x(:,i),1,K));
-%                     else
-%                         dx = xnew(:,:,i) - repmat(x(:,i),1,K);
-%                     end
-%                     unew(:,:,i) = unew(:,:,i) + L(:,:,i) * dx;
-%                 end
-%                 
-%                 if ~isempty(lims)
-%                     unew(:,:,i) = min(repmat(lims(:,2),1,K), max(repmat(lims(:,1),1,K), unew(:,:,i)));
-%                 end
-%         
-%                 [xnew(:,:,i+1), cnew(:,:,i)]  = DYNCST(xnew(:,:,i), unew(:,:,i), i);
-%             end
-%         
-%             [~, cnew(:,:,N+1)] = DYNCST(xnew(:,:,N+1),nan(m,K),N+1);
-%         
-%             % put time dimension in the 2nd index
-%             xnew = permute(xnew, [1 3 2]);
-%             unew = permute(unew, [1 3 2]);
-%             cnew = permute(cnew, [1 3 2]);
-%         end
 
         function [diverge, Vx, Vxx, k, K, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,regType,lims,u)
         % Perform the Ricatti-Mayne backward pass
@@ -730,7 +688,7 @@ classdef iLQG_hw
 
         %update system state
         if isnan(obj.car.u )
-            fprintf('control is not a number')
+            ;
         else
             obj.car.updateState;
         end

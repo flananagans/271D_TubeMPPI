@@ -58,7 +58,7 @@ classdef OvalTrack < Track
         % Function to check if we have are outside track limits
         %   returns true if system_pos outside the track
         %
-        %   system_pos: position of system in [x;y]
+        %   system_pos: position  of system in [x;y]
 
             if((system_pos(2) > 0) && ...
                (system_pos(2) < obj.boundaries.straightlength))

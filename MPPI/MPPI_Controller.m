@@ -42,7 +42,7 @@ classdef MPPI_Controller < handle
         end
     
         % Function to run the core MPPI optimization
-        function [U,X,S, x_traj_list] = MPPI(obj, initial_state, C0)
+        function [U,X,S, x_traj_list] = MPPI(obj, initial_state)
 
 
             % Shift control trajectory over one step (u_traj)

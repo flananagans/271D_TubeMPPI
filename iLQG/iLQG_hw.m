@@ -351,11 +351,16 @@ classdef iLQG_hw
                         lower = lims(:,1)-u(:,i);
                         upper = lims(:,2)-u(:,i);
                         
-                        [k_i,result,R,free] = boxQP(abs(QuuF),Qu,lower,upper,k(:,min(i+1,N-1)));
-                        if result < 1
+                        if eig(QuuF) > 0
+                            [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
+                        else
+                            [k_i,result,R,free] = boxQP(abs(QuuF)+20*eye(size(QuuF)),Qu,lower,upper,k(:,min(i+1,N-1)));
+                        end
+                            if result < 1
                             diverge  = i;
                             display(result)
                             display(i)
+                            display(eig(QuuF))
                             return;
                         end
                         
@@ -659,7 +664,7 @@ classdef iLQG_hw
             end
             trace    = trace(~isnan([trace.iter]));
         %     timing   = [diff_t back_t fwd_t total_t-diff_t-back_t-fwd_t];
-            graphics(obj.plot,x,u,cost,L,Vx,Vxx,fx,fxx,fu,fuu,trace,2); % draw legend
+            %graphics(obj.plot,x,u,cost,L,Vx,Vxx,fx,fxx,fu,fuu,trace,2); % draw legend
         else
             error('Failure: no iterations completed, something is wrong.')
         end
@@ -779,7 +784,11 @@ classdef iLQG_hw
                 lower = lims(:,1)-u(:,i);
                 upper = lims(:,2)-u(:,i);
                 
-                [k_i,result,R,free] = boxQP(abs(QuuF),Qu,lower,upper,k(:,min(i+1,N-1)));
+                if eig(QuuF) > 0
+                    [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
+                else
+                    [k_i,result,R,free] = boxQP(abs(QuuF)+20*eye(size(QuuF)),Qu,lower,upper,k(:,min(i+1,N-1)));
+                end
                 if result < 1
                     diverge  = i;
                     return;

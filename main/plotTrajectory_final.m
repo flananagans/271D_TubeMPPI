@@ -7,7 +7,7 @@ clc
 initWorkspace();
 
 %% Load data
-fnames = dir("CalibrationData\Run5\*.mat");
+fnames = dir("CalibrationData\Run8\*.mat");
 
 %% Plot good trajectories
 for f_ind = 1:length(fnames)

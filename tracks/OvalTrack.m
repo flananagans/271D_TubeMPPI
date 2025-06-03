@@ -15,6 +15,7 @@ classdef OvalTrack < Track
         obstacle_spawn_ylim = 1;
         obstacle_spawn_mean = 1; % spawn obstacle once state passes this line
         obstacle_spawn_var = 0.05;
+        obstacle_clearance = 0.005;
     end
 
     properties (Access=private)
@@ -100,7 +101,7 @@ classdef OvalTrack < Track
             if(obj.obstacle.active)
                 % check if state is inside boundary
                 
-                in_obstacle = obj.getObstacleDistance(system_pos) < 0;
+                in_obstacle = obj.getObstacleDistance(system_pos) < obj.obstacle_clearance;
             else
                 % no obstacles
                 in_obstacle = false;

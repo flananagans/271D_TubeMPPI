@@ -16,7 +16,7 @@ toPlot = false;
 initWorkspace();
 
 %% Iterate to collect calibration data
-for ct = 1:50
+for ct = 1:100
 
 %% Filename to save to
 fname = 'MPPI';
@@ -95,13 +95,13 @@ K = dlqr(A,B,Q,R);
 %% Video writer to save video
 if(captureVideo)
     v = VideoWriter([fname, '.avi']);
-    v.FrameRate = f_anc;
+    v.FrameRate = floor(f_anc/2);
     open(v);
 end
 
 %% Run the simulation
 if(toPlot)
-    figure('Name', 'HW2 Oval Track');
+    figure('Name', 'HW2 Oval Track', 'units','pixels','position',[0 0 1440 1440]);
     track.plotTrack();
     axis equal;
     mppi_run_flag = 0;
@@ -212,7 +212,7 @@ outside_track = outside_track(1:t_step);
 t_arr = t_arr(1:t_step);
 
 %% Save everything 
-save(fname);
+%save(fname);
 
 if(captureVideo)
     close(v);

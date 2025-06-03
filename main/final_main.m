@@ -16,7 +16,7 @@ toPlot = false;
 initWorkspace();
 
 %% Iterate to collect calibration data
-for ct = 1:100
+for ct = 1:50
 
 %% Filename to save to
 fname = 'MPPI';
@@ -129,7 +129,8 @@ t_arr = zeros(1, length(x_hist(1,:))); % time array
 
 t = 0;
 t_step = 1;
-while( (~track.checkObstacles(x_hist(1:2, t_step))) && ...
+while( (isnan(track.getObstacleDistance(x_hist(1:2, t_step))) || ...
+              (track.getObstacleDistance(x_hist(1:2, t_step)) >= 0)) && ...
        (~track.checkTrackLimits(x_hist(1:2, t_step))) && ...
        (x_hist(1, t_step) > -2) && (t < T_sim - 1) )
 
@@ -212,7 +213,7 @@ outside_track = outside_track(1:t_step);
 t_arr = t_arr(1:t_step);
 
 %% Save everything 
-%save(fname);
+save(fname);
 
 if(captureVideo)
     close(v);

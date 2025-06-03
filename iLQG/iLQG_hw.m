@@ -354,7 +354,12 @@ classdef iLQG_hw
                         if eig(QuuF) > 0
                             [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
                         else
-                            [k_i,result,R,free] = boxQP(abs(QuuF)+20*eye(size(QuuF)),Qu,lower,upper,k(:,min(i+1,N-1)));
+                            A = QuuF;
+                            delta = 10e-6;
+                            [V,D] = eig((A + A')/2);
+                            D = diag(max(diag(D), delta));  % delta > 0
+                            A_new = V * D * V';
+                            [k_i,result,R,free] = boxQP(A_new,Qu,lower,upper,k(:,min(i+1,N-1)));
                         end
                             if result < 1
                             diverge  = i;
@@ -787,7 +792,12 @@ classdef iLQG_hw
                 if eig(QuuF) > 0
                     [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
                 else
-                    [k_i,result,R,free] = boxQP(abs(QuuF)+20*eye(size(QuuF)),Qu,lower,upper,k(:,min(i+1,N-1)));
+                    A = QuuF;
+                    delta = 10e-6;
+                    [V,D] = eig((A + A')/2);
+                    D = diag(max(diag(D), delta));  % delta > 0
+                    A_new = V * D * V';
+                    [k_i,result,R,free] = boxQP(A_new,Qu,lower,upper,k(:,min(i+1,N-1)));               
                 end
                 if result < 1
                     diverge  = i;

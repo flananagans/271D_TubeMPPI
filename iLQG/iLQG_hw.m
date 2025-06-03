@@ -304,7 +304,7 @@ classdef iLQG_hw
                         QuuF = QuuF + fuuVx;
                     end
                     
-                    if nargin < 13 || isempty(lims) || lims(1,1) > lims(1,2)
+                    if isempty(lims) || lims(1,1) > lims(1,2)
                         % no control limits: Cholesky decomposition, check for non-PD
                         [R,d] = chol(QuuF);
                         if d ~= 0

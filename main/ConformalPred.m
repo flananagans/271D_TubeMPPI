@@ -3,7 +3,7 @@
 %% Determine Conformity score (min distance) of each run 
 clear all;
 %% Indicate the Runs that will be included in the distrobution
-run_num = [7];
+run_num = [7,8];
 min_dist_lst = [];
 
 % Main loop
@@ -21,20 +21,25 @@ for N = run_num
             y_curr = data.x_hist(2, j);
             dist_curr = data.track.getObstacleDistance([x_curr;y_curr]);
             dist_lst(j) = dist_curr;
-        end
+        end 
         min_dist_lst = [min_dist_lst, min(dist_lst)];
     end
 end
+
+%%
 %% Plotting Histogram
 clear figure;
 edges = round(min(min_dist_lst),2):0.005:round(max(min_dist_lst),2);
 histogram(min_dist_lst,edges)
 grid on; 
 xlabel("Minimum Distance")
-alpha = 0.01;
+alpha = 0;
 hold on
 xline(alpha, "--",'linewidth',2)
 hold off;
 
 percent_within_safety = sum(min_dist_lst>=alpha)/length(min_dist_lst);
 num_obstacle_hits = sum(min_dist_lst<=0);
+
+%% Next Step:
+% Clearance Value, add to obstacle, see if we can shift the distrubtion 

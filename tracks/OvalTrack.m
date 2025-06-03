@@ -15,6 +15,7 @@ classdef OvalTrack < Track
         obstacle_spawn_ylim = 1;
         obstacle_spawn_mean = 1; % spawn obstacle once state passes this line
         obstacle_spawn_var = 0.05;
+        clearance_value = 0;
     end
 
     properties (Access=private)
@@ -57,7 +58,7 @@ classdef OvalTrack < Track
         % Function to check if we have are outside track limits
         %   returns true if system_pos outside the track
         %
-        %   system_pos: position of system in [x;y]
+        %   system_pos: position  of system in [x;y]
 
             if((system_pos(2) > 0) && ...
                (system_pos(2) < obj.boundaries.straightlength))
@@ -85,7 +86,7 @@ classdef OvalTrack < Track
                 r = vecnorm(system_pos(1:2) - center_pt);
 
                 inside_bounds = (r >= obj.boundaries.radius) && ...
-                                (r <= obj.boundaries.radius + obj.boundaries.width);
+                                (r <= obj.boundaries.radius + obj.boundaries.width) %+clearance;
             end
 
             outside_bounds = ~inside_bounds;

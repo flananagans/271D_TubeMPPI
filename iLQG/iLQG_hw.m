@@ -4,7 +4,8 @@ classdef iLQG_hw
     properties
         car = []; %car object
         
-        lims = []; %control limits
+        lims = [-5 5;         % wheel angle limits (radians)
+             -5  5]; %control limits
         parallel = true; %use parallel line-search?
         Alpha = 10.^linspace(0,-3,11); %backtracking coefficients
         tolFun = 1e-7; %reduction exit critereon
@@ -303,7 +304,7 @@ classdef iLQG_hw
                         QuuF = QuuF + fuuVx;
                     end
                     
-                    if nargin < 13 || isempty(lims) || lims(1,1) > lims(1,2)
+                    if isempty(lims) || lims(1,1) > lims(1,2)
                         % no control limits: Cholesky decomposition, check for non-PD
                         [R,d] = chol(QuuF);
                         if d ~= 0
@@ -760,8 +761,13 @@ classdef iLQG_hw
             [row col] = size(x);
             c = zeros(1, col);
             for i = 1:col
-                c(1,i) = x(1:4,i)'*obj.car.Q*x(1:4,i) + x(5:6,i)'*obj.car.R*x(5:6,i);
+                if isnan(x(5,i)) || isnan(x(6,i))
+                    c(1,col)  = x(1:4,col)'*obj.car.Q*x(1:4,col);
+                else
+                    c(1,i) = x(1:4,i)'*obj.car.Q*x(1:4,i) + x(5:6,i)'*obj.car.R*x(5:6,i);
+                end
             end
+            
             
         end
 

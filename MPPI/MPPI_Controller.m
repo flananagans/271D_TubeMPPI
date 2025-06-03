@@ -179,7 +179,7 @@ classdef MPPI_Controller < handle
             vy = x_t(4);
 
             %calculate the cost of the states and control
-            cost_states = (sqrt(vx^2 + vy^2) - obj.v_des)^2 + 1000*CC + 5*CO;
+            cost_states = (sqrt(vx^2 + vy^2) - obj.v_des)^2 + 1000*CC + 1000*CO;
             cost_control = obj.lambda*(u_t'/obj.system.sigma_control)*e_t;
             cost = cost_states + cost_control;
         end

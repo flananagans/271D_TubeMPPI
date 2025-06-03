@@ -60,6 +60,10 @@ classdef DiscreteLinearSystem < handle
         % Function to update the state of the system based on current x
         % and u
         function x_new = updateState(obj)
+            if(isnan(obj.u))
+                walla = 0;
+            end
+
             obj.x = obj.A*obj.x + obj.B*obj.u;
 
             x_new = obj.x;
@@ -147,6 +151,11 @@ classdef DiscreteLinearSystem < handle
 
         %% Computing Costs and Contraints
         function c = calculateCost(obj)
+
+            if(isnan(obj.u))
+                %walla = 0;
+                obj.u = zeros(size(obj.u));
+            end
             c = obj.x'*obj.Q*obj.x + obj.u'*obj.R*obj.u;
         end     
 

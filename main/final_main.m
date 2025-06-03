@@ -10,7 +10,7 @@ has_high_noise = true; % actual control noise 10x modeled
 has_ancillary = true; % activate ancillary controller
 
 captureVideo = false;
-toPlot = true;
+toPlot = false;
 
 %% Initialize the workspace and include folders
 initWorkspace();
@@ -67,8 +67,7 @@ MPPI.v_des = v_des; % set desired speed
 obs_mean = [0;0]; 
 obs_var = [0.5 0; 0 0.5];
 
-
-sensor = Distance_Sensor(obs_mean, obs_var);
+%sensor = Distance_Sensor(obs_mean, obs_var);
 
 % Ancillary controller
 f_anc = 1/dt; % frequency of the ancillary controller

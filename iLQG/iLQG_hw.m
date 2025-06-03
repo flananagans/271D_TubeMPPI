@@ -681,17 +681,16 @@ classdef iLQG_hw
         cost = obj.car.calculateCost;
         assert(isnumeric(cost) && isscalar(cost), 'Error: obj.car.calculateCost did not return a valid scalar.');
         %assert(nargout == 2, 'car_dyn_cst should return exactly 2 outputs.');
+        
+        
 
         %give new state and control inputs to system
+        u(isnan(u)) = 0;
         obj.car.x = x;
         obj.car.setControl(u);
 
         %update system state
-        if isnan(obj.car.u )
-            ;
-        else
-            obj.car.updateState;
-        end
+        obj.car.updateState();
 
         if nargout == 2
             f = obj.car.x;

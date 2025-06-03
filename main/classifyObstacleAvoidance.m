@@ -1,4 +1,4 @@
-%% Script to plot a previously saved trajectory
+%% Classify collisions and avoidances
 
 clear
 close all
@@ -9,14 +9,26 @@ initWorkspace();
 %% Load data
 fnames = dir("CalibrationData\Run5\*.mat");
 
-%% Plot good trajectories
+%% Collect data
+load([fnames(1).folder, filesep, fnames(1).name]);
+
+x_at_appear = zeros(length(car.x), length(fnames));
+dist_at_appear = zeros(size(fnames));
+hit_obs_all = zeros(size(fnames));
 for f_ind = 1:length(fnames)
     
     load([fnames(f_ind).folder, filesep, fnames(f_ind).name]);
 
     % Skip trials if they went the wrong way
     if(any(x_hist(2,:) < -0.5))
+
+        xs_appear_all(f_ind) = NaN;
+        dist_at_appear(f_ind) = NaN;
+        hit_obs_all(f_ind) = NaN;
         continue;
+    else % Collect data
+        xs_all(:, f_ind) = 
+        
     end
     
     if(f_ind == 1)

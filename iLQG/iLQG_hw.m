@@ -13,6 +13,7 @@ classdef iLQG_hw
         maxIter = 500; %maximum iterations
         lambda = 1; %initial value for lambda
         dlambda = 1 %initial value for dlambda
+        lambdaFactor = 1.6
         lambdaMax = 1e10; %lambda maximum value
         lambdaMin = 1e-6; %lambda minimum value
         regType = 1; %regularization type 1: q_uu+lambda*eye(); 2: V_xx+lambda*eye()
@@ -239,7 +240,36 @@ classdef iLQG_hw
             %====== STEP 1: differentiate dynamics and cost along new trajectory
             if flgChange
                 t_diff = tic;
-                [~,~,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu]   = DYNCST(x, [u nan(m,1)], 1:N+1);
+
+                xsplit = x;
+                usplit = [u nan(m,1)];
+                last = 1:N+1;
+                [r,c] = size(xsplit);
+
+                fx_split = zeros(4,4,c);
+                fu_split = zeros(4,2,c);
+                fxx_split = [];
+                fxu_split = [];
+                fuu_split = [];
+                cx_split = zeros(4,c);
+                cu_split = zeros(2,c);
+                cxx_split = zeros(4,4,c);
+                cxu_split = zeros(4,2,c);
+                cuu_split = zeros(2,2,c);
+                for j = 1:c
+                    [~,~,fx_split(:,:,j), fu_split(:,:,j), fxx_split, fxu_split, fuu_split, cx_split(:,j), cu_split(:,j), cxx_split(:,:,j), cxu_split(:,:,j), cuu_split(:,:,j)]  = DYNCST(xsplit(:,j), usplit(:,j), last(:,j));
+                end
+                fx = fx_split;
+                fu = fu_split;
+                fxx = fxx_split;
+                fxu = fxu_split;
+                fuu = fuu_split;
+                cx = cx_split;
+                cu = cu_split;
+                cxx = cxx_split;
+                cxu = cxu_split;
+                cuu = cuu_split;
+                %[~,~,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu]   = DYNCST(x, [u nan(m,1)], 1:N+1);
                 trace(iter).time_derivs = toc(t_diff);
                 flgChange   = 0;
             end
@@ -321,9 +351,21 @@ classdef iLQG_hw
                         lower = lims(:,1)-u(:,i);
                         upper = lims(:,2)-u(:,i);
                         
-                        [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
-                        if result < 1
+                        if eig(QuuF) > 0
+                            [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
+                        else
+                            A = QuuF;
+                            delta = 10e-6;
+                            [V,D] = eig((A + A')/2);
+                            D = diag(max(diag(D), delta));  % delta > 0
+                            A_new = V * D * V';
+                            [k_i,result,R,free] = boxQP(A_new,Qu,lower,upper,k(:,min(i+1,N-1)));
+                        end
+                            if result < 1
                             diverge  = i;
+                            display(result)
+                            display(i)
+                            display(eig(QuuF))
                             return;
                         end
                         
@@ -382,7 +424,67 @@ classdef iLQG_hw
             if backPassDone
                 t_fwd = tic;
                 if obj.parallel  % parallel line-search
-                    [xnew,unew,costnew] = forward_pass(x0 ,u, L, x(:,1:N), l, obj.Alpha, DYNCST,obj.lims,obj.diffFn);
+                    %[xnew,unew,costnew] = forward_pass(x0 ,u, L, x(:,1:N), l, obj.Alpha, DYNCST,obj.lims,obj.diffFn);
+                    %% start forward pass
+                    x0 = x0(:,1); u = u; x = x(:,1:N); du = l; Alpha = obj.Alpha; lims = obj.lims; diff = obj.diffFn;
+                    n        = size(x0,1);
+                    K        = length(Alpha);
+                    K1       = ones(1,K); % useful for expansion
+                    m        = size(u,1);
+                    N        = size(u,2);
+                    xnew        = zeros(n,K,N);
+                    xnew(:,:,1) = x0(:,ones(1,K));
+                    unew        = zeros(m,K,N);
+                    cnew        = zeros(1,K,N+1);
+                    for i = 1:N
+                        unew(:,:,i) = u(:,i*K1);
+                        
+                        if ~isempty(du)
+                            unew(:,:,i) = unew(:,:,i) + du(:,i)*Alpha;
+                        end    
+                        
+                        if ~isempty(L)
+                            if ~isempty(diff)
+                                dx = diff(xnew(:,:,i), x(:,i*K1));
+                            else
+                                dx          = xnew(:,:,i) - x(:,i*K1);
+                            end
+                            unew(:,:,i) = unew(:,:,i) + L(:,:,i)*dx;
+                        end
+                        
+                        if ~isempty(lims)
+                            unew(:,:,i) = min(lims(:,2*K1), max(lims(:,1*K1), unew(:,:,i)));
+                        end
+                        xsplit = xnew(:,:,i);
+                        usplit = unew(:,:,i);
+                        [r,c] = size(xsplit);
+
+                        xnew_split = zeros(r,c);
+                        cnew_split = zeros(1,c);
+                        for j = 1:c
+                            [xnew_split(:,j), cnew_split(1,j)]  = DYNCST(xsplit(:,j), usplit(:,j), i*K1(:,j));
+                        end
+                        xnew(:,:,i+1) = xnew_split;
+                        cnew(:,:,i) = cnew_split;
+                    end
+                    xsplit = xnew(:,:,N+1);
+                    usplit = nan(m,K,1);
+                    [r,c] = size(xsplit);
+
+                    cnew_split = zeros(1,c);
+                    for j = 1:c
+                        [~, cnew_split(1,j)]  = DYNCST(xsplit(:,j), usplit(:,j), i);
+                    end
+                   
+                    cnew(:,:,i) = cnew_split;
+                    %[~, cnew(:,:,N+1)] = DYNCST(xnew(:,:,N+1),nan(m,K,1),i);
+                    % put the time dimension in the columns
+                    xnew = permute(xnew, [1 3 2]);
+                    unew = permute(unew, [1 3 2]);
+                    cnew = permute(cnew, [1 3 2]);
+                    
+                    costnew = cnew;
+                    %% end forward pass
                     Dcost               = sum(cost(:)) - sum(costnew,2);
                     [dcost, w]          = max(Dcost);
                     alpha               = obj.Alpha(w);
@@ -401,7 +503,47 @@ classdef iLQG_hw
                     end
                 else            % serial backtracking line-search
                     for alpha = obj.Alpha
-                        [xnew,unew,costnew]   = forward_pass(x0 ,u+l*alpha, L, x(:,1:N),[],1,DYNCST,obj.lims,obj.diffFn);
+                        %[xnew,unew,costnew]   = forward_pass(x0 ,u+l*alpha, L, x(:,1:N),[],1,DYNCST,obj.lims,obj.diffFn);
+                        %% start forward pass
+                        x0 = x0(:,1); u = u+l*alpha; x = x(:,1:N); du = []; Alpha = 1; lims = obj.lims; diff = obj.diffFn;
+                        n        = size(x0,1);
+                        K        = length(Alpha);
+                        K1       = ones(1,K); % useful for expansion
+                        m        = size(u,1);
+                        N        = size(u,2);
+                        xnew        = zeros(n,K,N);
+                        xnew(:,:,1) = x0(:,ones(1,K));
+                        unew        = zeros(m,K,N);
+                        cnew        = zeros(1,K,N+1);
+                        for i = 1:N
+                            unew(:,:,i) = u(:,i*K1);
+                            
+                            if ~isempty(du)
+                                unew(:,:,i) = unew(:,:,i) + du(:,i)*Alpha;
+                            end    
+                            
+                            if ~isempty(L)
+                                if ~isempty(diff)
+                                    dx = diff(xnew(:,:,i), x(:,i*K1));
+                                else
+                                    dx          = xnew(:,:,i) - x(:,i*K1);
+                                end
+                                unew(:,:,i) = unew(:,:,i) + L(:,:,i)*dx;
+                            end
+                            
+                            if ~isempty(lims)
+                                unew(:,:,i) = min(lims(:,2*K1), max(lims(:,1*K1), unew(:,:,i)));
+                            end
+                            [xnew(:,:,i+1), cnew(:,:,i)]  = DYNCST(xnew(:,:,i), unew(:,:,i), i*K1);
+                        end
+                        [~, cnew(:,:,N+1)] = DYNCST(xnew(:,:,N+1),nan(m,K,1),i);
+                        % put the time dimension in the columns
+                        xnew = permute(xnew, [1 3 2]);
+                        unew = permute(unew, [1 3 2]);
+                        cnew = permute(cnew, [1 3 2]);
+                        
+                        costnew = cnew;
+                        %% end forward pass
                         dcost    = sum(cost(:)) - sum(costnew(:));
                         expected = -alpha*(dV(1) + alpha*dV(2));
                         if expected > 0
@@ -486,7 +628,7 @@ classdef iLQG_hw
             trace(iter).improvement = dcost;
             trace(iter).cost        = sum(cost(:));
             trace(iter).reduc_ratio = z;
-            stop = graphics(obj.plot,x,u,cost,L,Vx,Vxx,fx,fxx,fu,fuu,trace(1:iter),0);
+            %stop = graphics(obj.plot,x,u,cost,L,Vx,Vxx,fx,fxx,fu,fuu,trace(1:iter),0);
         end
         % save lambda/dlambda
         trace(iter).lambda      = lambda;
@@ -527,7 +669,7 @@ classdef iLQG_hw
             end
             trace    = trace(~isnan([trace.iter]));
         %     timing   = [diff_t back_t fwd_t total_t-diff_t-back_t-fwd_t];
-            graphics(obj.plot,x,u,cost,L,Vx,Vxx,fx,fxx,fu,fuu,trace,2); % draw legend
+            %graphics(obj.plot,x,u,cost,L,Vx,Vxx,fx,fxx,fu,fuu,trace,2); % draw legend
         else
             error('Failure: no iterations completed, something is wrong.')
         end
@@ -647,7 +789,16 @@ classdef iLQG_hw
                 lower = lims(:,1)-u(:,i);
                 upper = lims(:,2)-u(:,i);
                 
-                [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
+                if eig(QuuF) > 0
+                    [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
+                else
+                    A = QuuF;
+                    delta = 10e-6;
+                    [V,D] = eig((A + A')/2);
+                    D = diag(max(diag(D), delta));  % delta > 0
+                    A_new = V * D * V';
+                    [k_i,result,R,free] = boxQP(A_new,Qu,lower,upper,k(:,min(i+1,N-1)));               
+                end
                 if result < 1
                     diverge  = i;
                     return;
@@ -680,19 +831,23 @@ classdef iLQG_hw
 
         assert(isnumeric(obj.car.x) && all(isfinite(obj.car.x(:))), 'Error: obj.car.x is not numeric or contains invalid values.');
         cost = obj.car.calculateCost;
-        assert(isnumeric(cost) && isscalar(cost), 'Error: obj.car.calculateCost did not return a valid scalar.');
+        assert(isnumeric(cost) , 'Error: obj.car.calculateCost did not return a numeric value.');
         %assert(nargout == 2, 'car_dyn_cst should return exactly 2 outputs.');
+        
+        
 
         %give new state and control inputs to system
+        u(isnan(u)) = 0;
         obj.car.x = x;
         obj.car.setControl(u);
 
         %update system state
-        if isnan(obj.car.u )
-            ;
-        else
-            obj.car.updateState;
+         
+        if sum(sum(isnan(obj.car.u))) > 0
+            obj.car.u(isnan(obj.car.u)) = 0;
         end
+        obj.car.updateState;
+
 
         if nargout == 2
             f = obj.car.x;
@@ -715,8 +870,8 @@ classdef iLQG_hw
             % cost first derivatives
             xu_cost = @(xu) obj.calculateCost(xu);
             J       = squeeze(obj.finite_difference(xu_cost, [x; u]));
-            cx      = J(ix,:);
-            cu      = J(iu,:);
+            cx      = J(:,ix,:);
+            cu      = J(:,iu,:);
             
             % cost second derivatives
             xu_Jcst = @(xu) obj.calculateCost(xu);

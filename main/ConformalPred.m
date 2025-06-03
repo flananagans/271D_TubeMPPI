@@ -3,7 +3,7 @@
 %% Determine Conformity score (min distance) of each run 
 clear all;
 %% Indicate the Runs that will be included in the distrobution
-run_num = [3,4];
+run_num = [7];
 min_dist_lst = [];
 
 % Main loop

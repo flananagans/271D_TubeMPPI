@@ -10,14 +10,14 @@ has_high_noise = true; % actual control noise 10x modeled
 has_ancillary = true; % activate ancillary controller
 
 captureVideo = false;
-toPlot = true;
+toPlot = false;
 
 %% Initialize the workspace and include folders
 initWorkspace();
 
 %% Iterate to collect calibration data
-for ct = 1:50
-
+for ct = 1:100
+ct
 %% Filename to save to
 fname = 'MPPI';
 if(has_high_noise)
@@ -64,11 +64,6 @@ car_MPPI.setDt(1/f_MPPI); % set sampling time to match MPPI frequency
 MPPI = MPPI_Controller(car_MPPI, track, K_MPPI, T_MPPI);
 MPPI.v_des = v_des; % set desired speed
 
-obs_mean = [0;0]; 
-obs_var = [0.5 0; 0 0.5];
-
-
-sensor = Distance_Sensor(obs_mean, obs_var);
 
 % Ancillary controller
 f_anc = 1/dt; % frequency of the ancillary controller

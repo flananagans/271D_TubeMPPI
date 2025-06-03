@@ -4,7 +4,7 @@ close all
 car = DiscreteLinearSystem;
 ilqg = iLQG_hw(car);
 x0 = [10;5;0;0];
-u0 = 10*randn(2,500);
+u0 = 10*randn(2,5);
 
 [x, u, L, Vx, Vxx, cost, trace, stop] = ilqg.solve(x0, u0);
 

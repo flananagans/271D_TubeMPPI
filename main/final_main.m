@@ -16,7 +16,7 @@ toPlot = false;
 initWorkspace();
 
 %% Iterate to collect calibration data
-for ct = 1:50
+for ct = 43:50
 
 %% Filename to save to
 fname = 'MPPI';

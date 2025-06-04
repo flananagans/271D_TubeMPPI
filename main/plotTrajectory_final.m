@@ -7,7 +7,7 @@ clc
 initWorkspace();
 
 %% Load data
-fnames = dir("CalibrationData\Run5\*.mat");
+fnames = dir("CalibrationData\Run9\*.mat");
 
 %% Plot good trajectories
 for f_ind = 1:length(fnames)
@@ -81,7 +81,7 @@ for f_ind = 1:length(fnames)
     load([fnames(f_ind).folder, filesep, fnames(f_ind).name]);
 
     % Skip trials if they went the wrong way
-    if(any(x_hist(2,:) < -0.5))
+    if(any(x_hist(2,:) < -0.5) || any(outside_track))
         continue;
     end
 

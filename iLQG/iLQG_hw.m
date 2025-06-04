@@ -355,7 +355,7 @@ classdef iLQG_hw
                             [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
                         else
                             A = QuuF;
-                            delta = 10e-6;
+                            delta = 10e-5;
                             [V,D] = eig((A + A')/2);
                             D = diag(max(diag(D), delta));  % delta > 0
                             A_new = V * D * V';
@@ -793,7 +793,7 @@ classdef iLQG_hw
                     [k_i,result,R,free] = boxQP(QuuF,Qu,lower,upper,k(:,min(i+1,N-1)));
                 else
                     A = QuuF;
-                    delta = 10e-6;
+                    delta = 10e-5;
                     [V,D] = eig((A + A')/2);
                     D = diag(max(diag(D), delta));  % delta > 0
                     A_new = V * D * V';

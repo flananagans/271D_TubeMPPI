@@ -17,7 +17,6 @@ initWorkspace();
 
 %% Iterate to collect calibration data
 for ct = 1:100
-
 %% Filename to save to
 fname = 'MPPI';
 if(has_high_noise)
@@ -77,9 +76,13 @@ car_anc = DiscreteLinearSystem();
 car_anc.setDt(1/f_anc); % set sampling time to match iLQG frequency
 
 % create iLQG instance
+
 ilqg = iLQG_hw(car_anc);
 
-% create PID instance
+=======
+%ilqg = iLQG_hw(car_iLQG);
+
+
 
 %create LQR instance
 Q = diag([1,1,1,1]);
@@ -125,7 +128,8 @@ t_arr = zeros(1, length(x_hist(1,:))); % time array
 
 t = 0;
 t_step = 1;
-while( (~track.checkObstacles(x_hist(1:2, t_step))) && ...
+while( (isnan(track.getObstacleDistance(x_hist(1:2, t_step))) || ...
+              (track.getObstacleDistance(x_hist(1:2, t_step)) >= 0)) && ...
        (~track.checkTrackLimits(x_hist(1:2, t_step))) && ...
        (x_hist(1, t_step) > -2) && (t < T_sim - 1) )
 
@@ -144,14 +148,14 @@ while( (~track.checkObstacles(x_hist(1:2, t_step))) && ...
     end
 
     %% Get input for this step from ancillary controller
-    x0 = [10;5;0;0];
 
 
     if(has_ancillary)
         state_error = x_mppi(:, 1) - car.x; % x0 for ancillary
-        u_anc = K*state_error; 
+        %u_anc = K*state_error; 
         u0 = 10*randn(2,1);
-        [x, u, L, Vx, Vxx, cost, trace, stop] = ilqg.solve(x0, u0);
+        [x, u, L, Vx, Vxx, cost, trace, stop] = ilqg.solve(-state_error, u0);
+
 
     else
         u_anc = 0;
@@ -214,7 +218,9 @@ outside_track = outside_track(1:t_step);
 t_arr = t_arr(1:t_step);
 
 %% Save everything 
-%save(fname);
+
+save(fname);
+
 
 if(captureVideo)
     close(v);
@@ -223,4 +229,6 @@ end
 % close figure
 close all
 
+
 end
+

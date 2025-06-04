@@ -1,16 +1,16 @@
 %% Determine Conformity score (min distance) of each run
 clear all;
 %% Indicate the Runs that will be included in the distrobution
-run_num = [7,8];
+run_num = [9];
 min_dist_lst = [];
 % Main loop
 for N = run_num
-   path  = fullfile(strcat('Run', int2str(N)));
+   path  = fullfile(strcat('CalibrationData\Run', int2str(N)));
    files = dir(fullfile(path,'*.mat'));
    len = length(files);
    %%
    for i=1:len
-       data = load(files(i).name,'outside_track', 'obs_isactive', 'obs_hit', 'track', 'x_hist', 't_step');
+       data = load([files(i).folder, filesep, files(i).name],'outside_track', 'obs_isactive', 'obs_hit', 'track', 'x_hist', 't_step');
        if(any(data.x_hist(2,:) < -0.5))
            continue;
        end
@@ -49,11 +49,11 @@ hold off;
 %%
 %% Plotting Histogram
 clear figure;
-%edges = round(min(min_dist_lst),2):0.005:round(max(min_dist_lst),2);
-histogram(min_dist_lst)
+edges = round(min(min_dist_lst),2):0.005:round(max(min_dist_lst),2);
+histogram(min_dist_lst, edges)
 grid on;
 xlabel("Minimum Distance")
-alpha = 0.005;
+alpha = 0.0;
 hold on
 xline(alpha, "--",'linewidth',2)
 hold off;

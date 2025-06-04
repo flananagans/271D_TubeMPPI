@@ -86,7 +86,7 @@ classdef OvalTrack < Track
                 r = vecnorm(system_pos(1:2) - center_pt);
 
                 inside_bounds = (r >= obj.boundaries.radius) && ...
-                                (r <= obj.boundaries.radius + obj.boundaries.width) %+clearance;
+                                (r <= obj.boundaries.radius + obj.boundaries.width); %+clearance;
             end
 
             outside_bounds = ~inside_bounds;

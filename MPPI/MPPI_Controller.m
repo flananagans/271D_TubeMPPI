@@ -79,10 +79,13 @@ classdef MPPI_Controller < handle
                 % Note From Shirley: Please check if I'm using the
                 % constraint function correctly
                 N = obj.T/obj.dt;
+                cc = false; % has gone outside track
+                co = false; % has hit an obstacle
                 for t = 1:N-1
                     %compute the running cost 
-                    cc = obj.track.checkTrackLimits(x_traj_k(1:2,t)); % do we go out of the track
-                    co = obj.track.checkObstacles(x_traj_k(1:2,t)); % do we hit an obstacle
+                    cc = cc || obj.track.checkTrackLimits(x_traj_k(1:2,t)); % do we go out of the track
+                    co = co || obj.track.checkObstacles(x_traj_k(1:2,t)); % do we hit an obstacle
+
                     traj_cost = traj_cost + obj.runningCost(x_traj_k(:,t+1), u_traj_k(:,t), e_traj_k(:,t), cc, co);
                 end
                 traj_cost = traj_cost + obj.terminalCost(x_traj_k(:, end)); 
@@ -111,7 +114,7 @@ classdef MPPI_Controller < handle
 
             % Update Control Sequence
             U = obj.u_traj + E;
-    
+
             % Simulate the system with U to get X
             N = obj.T/obj.dt;
             X = zeros(size(obj.system.x,1),N); % this is states for t = 2:N
@@ -135,10 +138,23 @@ classdef MPPI_Controller < handle
         function [U,X] = RunMPPI(obj, actual_state)
 
             % Run MPPI starting from nominal state at this time
-            [U_nominal, X_nominal, S_nominal, x_traj_list_nominal] = obj.MPPI(obj.x_traj(:, 1));
+            U = cell(1,2);
+            X = cell(1,2);
+            S = cell(1,2);
+            x_traj_list_c = cell(1,2);
+            xs = {obj.x_traj(:, 1), actual_state};
+            parfor c = 1:2
+                [U{c}, X{c}, S{c}, x_traj_list_c{c}] = obj.MPPI(xs{c});
+            end
+            U_nominal = U{1};
+            X_nominal = X{1};
+            S_nominal = S{1};
+            x_traj_list_nominal = x_traj_list_c{1};
 
-            % Run MPPI starting from actual state at this time
-            [U_actual, X_actual, S_actual, x_traj_list_actual] = obj.MPPI(actual_state);
+            U_actual = U{2};
+            X_actual = X{2};
+            S_actual = S{2};
+            x_traj_list_actual = x_traj_list_c{2};
 
             % Set safety threshold
             safety = 0;

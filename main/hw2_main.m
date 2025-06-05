@@ -9,6 +9,8 @@ clc
 has_high_noise = false; % actual control noise 10x modeled
 has_ancillary = true; % activate ancillary controller
 
+captureVideo = true;
+
 %% Initialize the workspace and include folders
 initWorkspace();
 
@@ -24,7 +26,7 @@ if(has_ancillary)
 end
 
 %% Simulation setup
-T_sim = 100; % time duration of simulation
+T_sim = 9.5; % time duration of simulation
 dt = 0.01; % sampling period of simulation
 
 % create physical system model
@@ -80,9 +82,17 @@ A = car_anc.A;
 B = car_anc.B;
 K = dlqr(A,B,Q,R);
 
+%% Video writer to save video
+if(captureVideo)
+    v = VideoWriter([fname, '.avi']);
+    v.FrameRate = floor(f_anc/2);
+    open(v);
+end
+
 %% Run the simulation
-figure('Name', 'HW2 Oval Track');
+figure('Name', 'HW2 Oval Track', 'units','pixels','position',[0 0 1440 1440]);
 track.plotTrack();
+axis equal;
 mppi_run_flag = 0;
 xlim([-5, 1]);
 ylim([-3, 3]);
@@ -128,16 +138,25 @@ for t = 0:1/f_anc:T_sim
     car.plotSystem(); % plot position and orientation of our car
     drawnow();
 
+    xlim([-5, 1]);
+    ylim([-3, 3]);
+    t_step = t_step + 1;
+
+    if(captureVideo)
+        frame = getframe(gcf());
+        writeVideo(v, frame);
+    end
+
     %% Stop if way outside
     if(car.x(1) > 1 || car.x(1) < -5 || abs(car.x(2)) > 3)
         break;
     end
+end
 
-
-xlim([-5, 1]);
-ylim([-3, 3]);
-    t_step = t_step + 1;
+if(captureVideo)
+    close(v);
 end
 
 %% Save everything 
 save(fname);
+

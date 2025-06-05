@@ -15,7 +15,7 @@ classdef OvalTrack < Track
         obstacle_spawn_ylim = 1;
         obstacle_spawn_mean = 1; % spawn obstacle once state passes this line
         obstacle_spawn_var = 0.05;
-        obstacle_clearance = 0.005;
+        obstacle_clearance = 0.00;
     end
 
     properties (Access=private)

@@ -7,7 +7,10 @@ clc
 initWorkspace();
 
 %% Load data
-fnames = dir("CalibrationData\Run9\*.mat");
+fnames = dir("CalibrationData\Run15\*.mat");
+
+% track paths where obstacle was hit 
+bad_ct = 0;
 
 %% Plot good trajectories
 for f_ind = 1:length(fnames)
@@ -30,7 +33,7 @@ for f_ind = 1:length(fnames)
     end
 
     % plot the trajectory
-    if(any(obs_hit))
+    if(obs_hit(end))
         traj_col = 'm';
     elseif(any(outside_track))
         traj_col = '#AA2222';
@@ -58,8 +61,9 @@ for f_ind = 1:length(fnames)
     end
 
     % plot the trajectory
-    if(any(obs_hit))
+    if(obs_hit(end))
         traj_col = 'm';
+        bad_ct = bad_ct + 1;
     elseif(any(outside_track))
         traj_col = '#AA2222';
     else
@@ -100,3 +104,5 @@ for f_ind = 1:length(fnames)
         ylim([-3, 5]);
     end
 end
+
+success =  1 - bad_ct/length(fnames)

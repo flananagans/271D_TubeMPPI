@@ -1,8 +1,14 @@
 %% Determine Conformity score (min distance) of each run
 clear all;
+close all
+clc;
+
+initWorkspace();
+
 %% Indicate the Runs that will be included in the distrobution
-run_num = [9];
+run_num = [8];
 min_dist_lst = [];
+max_traj_err = [];
 % Main loop
 for N = run_num
    path  = fullfile(strcat('CalibrationData\Run', int2str(N)));
@@ -10,7 +16,7 @@ for N = run_num
    len = length(files);
    %%
    for i=1:len
-       data = load([files(i).folder, filesep, files(i).name],'outside_track', 'obs_isactive', 'obs_hit', 'track', 'x_hist', 't_step');
+       data = load([files(i).folder, filesep, files(i).name],'outside_track', 'obs_isactive', 'obs_hit', 'track', 'x_hist', 't_step', 'x_mppi_hist');
        if(any(data.x_hist(2,:) < -0.5))
            continue;
        end
@@ -25,6 +31,10 @@ for N = run_num
            display("Hit a NaN")
        end
        min_dist_lst = [min_dist_lst, min(dist_lst)];
+
+       % trajectory error between nominal and actual state
+       traj_err_lst = vecnorm(data.x_hist(1:2,:) - data.x_mppi_hist(1:2, :));
+       max_traj_err = [max_traj_err, max(traj_err_lst)];
    end
 end
 %%
@@ -59,4 +69,18 @@ xline(alpha, "--",'linewidth',2)
 hold off;
 percent_within_safety = sum(min_dist_lst>=alpha)/length(min_dist_lst);
 num_obstacle_hits = sum(min_dist_lst<=0);
+
+%% Plotting Histogram
+clear figure;
+max_traj_err = sort(max_traj_err, 'ascend');
+histogram(max_traj_err, 'BinWidth', 0.01);
+grid on;
+xlabel("Maximum trajectory error")
+alpha = 0.05; % desired failure probability
+alpha_ind_loc = ceil((1-alpha)*(length(max_traj_err)+1));
+alpha_crit = max_traj_err(alpha_ind_loc)
+hold on
+xline(alpha_crit, "--",'linewidth',2)
+hold off;
+
 

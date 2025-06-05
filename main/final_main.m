@@ -10,18 +10,18 @@ has_high_noise = true; % actual control noise 10x modeled
 has_ancillary = true; % activate ancillary controller
 
 captureVideo = false;
-toPlot = false;
+toPlot = true;
 
 %% Initialize the workspace and include folders
 initWorkspace();
 
 %% Iterate to collect calibration data
-for ct = 43:50
+for ct = 1:100
 
 %% Filename to save to
 fname = 'MPPI';
 if(has_high_noise)
-    fname = [fname, '_highnoise'];
+    fname = [fname, '_highnoise_clearance'];
 else
     fname = [fname, '_lownoise'];
 end
@@ -48,6 +48,7 @@ end
 or = 2.25;
 ir = 1.75;
 track = OvalTrack(or-ir, ir, 1);
+track.obstacle_clearance = 0.07;
 
 %% Controller setup
 %MPPI
@@ -101,7 +102,7 @@ end
 
 %% Run the simulation
 if(toPlot)
-    figure('Name', 'HW2 Oval Track', 'units','pixels','position',[0 0 1440 1440]);
+    figure('Name', 'HW2 Oval Track', 'units','pixels','position',[0 0 900 1440]);
     track.plotTrack();
     axis equal;
     mppi_run_flag = 0;

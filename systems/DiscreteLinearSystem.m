@@ -32,7 +32,7 @@ classdef DiscreteLinearSystem < handle
 
         %% Cost matrices
         Q = eye(4);
-        R = eye(2);
+        R = diag([0.1,0.1]);
 
         %% Plotting
         system_plothandle = [];

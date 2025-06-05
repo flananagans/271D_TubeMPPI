@@ -87,6 +87,7 @@ classdef OvalTrack < Track
 
                 inside_bounds = (r >= obj.boundaries.radius) && ...
                                 (r <= obj.boundaries.radius + obj.boundaries.width);
+
             end
 
             outside_bounds = ~inside_bounds;

@@ -78,13 +78,7 @@ car_anc = DiscreteLinearSystem();
 car_anc.setDt(1/f_anc); % set sampling time to match iLQG frequency
 
 % create iLQG instance
-%ilqg = iLQG_hw(car_iLQG);
-
-% create PID instance
-%Kp = eye(4);
-%Kd = eye(4);
-%Ki = eye(4); %zeros(4)
-%PID = PID_Controller(Kp,Ki,Kd,dt);
+ilqg = iLQG_hw(car_anc);
 
 %create LQR instance
 Q = diag([1,1,1,1]);
@@ -122,12 +116,6 @@ obs_hit = false(1, length(x_hist(1,:))); % is the obstacle hit
 outside_track = false(1, length(x_hist(1,:))); % is car oustide track
 t_arr = zeros(1, length(x_hist(1,:))); % time array
 
-% TO ADD:
-% object position
-% if object active
-% if outside track
-% if inside object
-
 t = 0;
 t_step = 1;
 while( (isnan(track.getObstacleDistance(x_hist(1:2, t_step))) || ...
@@ -153,6 +141,8 @@ while( (isnan(track.getObstacleDistance(x_hist(1:2, t_step))) || ...
     if(has_ancillary)
         state_error = x_mppi(:, 1) - car.x; % x0 for ancillary
         u_anc = K*state_error; 
+        %u0 = 10*randn(2,1);
+        %[x, u, L, Vx, Vxx, cost, trace, stop] = ilqg.solve(-state_error, u0);
     else
         u_anc = 0;
     end
@@ -214,7 +204,9 @@ outside_track = outside_track(1:t_step);
 t_arr = t_arr(1:t_step);
 
 %% Save everything 
+
 save(fname);
+
 
 if(captureVideo)
     close(v);
@@ -223,4 +215,6 @@ end
 % close figure
 close all
 
+
 end
+

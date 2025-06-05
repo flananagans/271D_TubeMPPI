@@ -6,8 +6,8 @@ close all
 clc
 
 %% Settings
-has_high_noise = false; % actual control noise 10x modeled
-has_ancillary = true; % activate ancillary controller
+has_high_noise = true; % actual control noise 10x modeled
+has_ancillary = 'iLQG'; % activate ancillary controller
 
 captureVideo = true;
 
@@ -21,9 +21,17 @@ if(has_high_noise)
 else
     fname = [fname, '_lownoise'];
 end
-if(has_ancillary)
-    fname = [fname, '_lqr'];
+if(strcmp(has_ancillary, 'iLQG'))
+    fname = [fname, '_iLQG'];
 end
+if(strcmp(has_ancillary,'LQR'))
+    fname = [fname, '_LQR'];
+end
+
+if(strcmp(has_ancillary,'None'))
+    fname = [fname, '_NoAnc'];
+end
+
 
 %% Simulation setup
 T_sim = 9.5; % time duration of simulation
@@ -67,7 +75,7 @@ car_anc = DiscreteLinearSystem();
 car_anc.setDt(1/f_anc); % set sampling time to match iLQG frequency
 
 % create iLQG instance
-%ilqg = iLQG_hw(car_iLQG);
+ilqg = iLQG_hw(car_anc);
 
 % create PID instance
 %Kp = eye(4);
@@ -115,9 +123,12 @@ for t = 0:1/f_anc:T_sim
     end
 
     %% Get input for this step from ancillary controller
-    if(has_ancillary)
+
+    if(strcmp(has_ancillary, 'iLQG'))
         state_error = x_mppi(:, 1) - car.x; % x0 for ancillary
-        u_anc = K*state_error; 
+        %u_anc = K*state_error; 
+        u0 = 10*randn(2,1);
+        [x, u_anc, L, Vx, Vxx, cost, trace, stop] = ilqg.solve(-state_error, u0);
     else
         u_anc = 0;
     end

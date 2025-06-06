@@ -25,6 +25,7 @@ scatter(0,0, 15, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
 xlabel('x position (m)')
 ylabel('y position (m)')
 title('MPPI')
+axis equal
 xlim([-5, 1])
 ylim([-3, 3])
 
@@ -45,6 +46,7 @@ scatter(0,0, 15, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
 xlabel('x position (m)')
 ylabel('y position (m)')
 title('MPPI + LQR')
+axis equal
 xlim([-5, 1])
 ylim([-3, 3])
 
@@ -67,6 +69,7 @@ end
 scatter(0,0, 15, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
 xlabel('x position (m)')
 ylabel('y position (m)')
+axis equal
 xlim([-5, 1])
 ylim([-3, 3])
 
@@ -86,6 +89,7 @@ plot(x_hist(1,:), x_hist(2,:))
 scatter(0,0, 15, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
 xlabel('x position (m)')
 ylabel('y position (m)')
+axis equal
 xlim([-5, 1])
 ylim([-3, 3])
 

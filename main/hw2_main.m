@@ -7,7 +7,7 @@ clc
 
 %% Settings
 has_high_noise = true; % actual control noise 10x modeled
-has_ancillary = 'iLQG'; % activate ancillary controller
+has_ancillary = 'LQR'; % activate ancillary controller
 
 captureVideo = true;
 

@@ -6,7 +6,7 @@ clc;
 initWorkspace();
 
 %% Indicate the Runs that will be included in the distrobution
-run_num = [8];
+run_num = [13];
 min_dist_lst = [];
 max_traj_err = [];
 % Main loop

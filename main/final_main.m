@@ -48,7 +48,7 @@ end
 or = 2.25;
 ir = 1.75;
 track = OvalTrack(or-ir, ir, 1);
-track.obstacle_clearance = 0.07;
+track.clearance = 0.07;
 
 %% Controller setup
 %MPPI
@@ -118,10 +118,10 @@ t_arr = zeros(1, length(x_hist(1,:))); % time array
 
 t = 0;
 t_step = 1;
-while( (isnan(track.getObstacleDistance(x_hist(1:2, t_step))) || ...
-              (track.getObstacleDistance(x_hist(1:2, t_step)) >= 0)) && ...
-       (~track.checkTrackLimits(x_hist(1:2, t_step))) && ...
-       (x_hist(1, t_step) > -2) && (t < T_sim - 1) )
+while( (~track.hitObstacles(x_hist(1:2, t_step))) && ...
+       (~track.hitTrackLimits(x_hist(1:2, t_step))) && ...
+       (x_hist(1, t_step) > -2) && (x_hist(2, t_step) > -0.75) && ...
+       (t < T_sim - 1) )
 
     t = 1/f_anc * (t_step - 1);
     t_arr(t_step) = t;
@@ -131,7 +131,7 @@ while( (isnan(track.getObstacleDistance(x_hist(1:2, t_step))) || ...
         
         [u_mppi, x_mppi] = MPPI.RunMPPI(car.x); % Shirley--> whatever this function
                                                 % is called
-
+        
         if(toPlot)
             MPPI.plotController(); % function to plot all trajectories
         end
@@ -159,8 +159,8 @@ while( (isnan(track.getObstacleDistance(x_hist(1:2, t_step))) || ...
     u_tot_hist(:, t_step) = car.u;
 
     obs_isactive(t_step + 1) = track.obstacle.active;
-    obs_hit(t_step + 1) = track.checkObstacles(x_hist(1:2, t_step + 1));
-    outside_track(t_step + 1) = track.checkTrackLimits(x_hist(1:2, t_step + 1));
+    obs_hit(t_step + 1) = track.hitObstacles(x_hist(1:2, t_step + 1));
+    outside_track(t_step + 1) = track.hitTrackLimits(x_hist(1:2, t_step + 1));
 
     if( (t_step > 1) && (obs_isactive(t_step - 1) ~= obs_isactive(t_step)) )
         fprintf("Obstacle activated at y = %0.2f\n", x_hist(2, t_step + 1));
@@ -181,11 +181,6 @@ while( (isnan(track.getObstacleDistance(x_hist(1:2, t_step))) || ...
     if(captureVideo)
         frame = getframe(gcf());
         writeVideo(v, frame);
-    end
-
-    %% Stop if car goes way outside
-    if(car.x(1) > 1 || car.x(1) < -5 || abs(car.x(2)) > 3)
-        break;
     end
 
     t_step = t_step + 1;

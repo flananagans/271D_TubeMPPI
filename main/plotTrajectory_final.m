@@ -7,7 +7,7 @@ clc
 initWorkspace();
 
 %% Load data
-fnames = dir("CalibrationData\Run15\*.mat");
+fnames = dir("CalibrationData\Run14\*.mat");
 
 % track paths where obstacle was hit 
 bad_ct = 0;
@@ -77,6 +77,12 @@ for f_ind = 1:length(fnames)
 
     x_hist(x_hist == 0) = NaN;
     plot(x_hist(1,:), x_hist(2,:), 'Color', traj_col);
+    hold on
+
+    if(contains(fnames(f_ind).folder, 'Run16'))
+        % plot nominal trajectory for this one bad trial
+        plot(x_mppi_hist(1,:), x_mppi_hist(2,:), '-.', 'Color', traj_col);
+    end
 end
 
 %% Plot scatter points for when obstacle is active and clean up plot

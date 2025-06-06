@@ -83,13 +83,12 @@ classdef MPPI_Controller < handle
                 co = false; % has hit an obstacle
                 for t = 1:N-1
                     %compute the running cost 
-                    cc = cc || obj.track.checkTrackLimits(x_traj_k(1:2,t)); % do we go out of the track
-                    co = co || obj.track.checkObstacles(x_traj_k(1:2,t)); % do we hit an obstacle
+                    cc = cc || obj.track.checkTrackLimits(x_traj_k(1:2,t)); % do we go out of the track + clearance
+                    co = co || obj.track.checkObstacles(x_traj_k(1:2,t)); % do we hit an obstacle + clearance
 
                     traj_cost = traj_cost + obj.runningCost(x_traj_k(:,t+1), u_traj_k(:,t), e_traj_k(:,t), cc, co);
                 end
                 traj_cost = traj_cost + obj.terminalCost(x_traj_k(:, end)); 
-                
                 % store our trajectory info
                 cost_list(k) = traj_cost;
                 e_traj_list{k} = e_traj_k;

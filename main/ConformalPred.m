@@ -75,12 +75,16 @@ clear figure;
 max_traj_err = sort(max_traj_err, 'ascend');
 histogram(max_traj_err, 'BinWidth', 0.01);
 grid on;
-xlabel("Maximum trajectory error")
+xlabel("maximum trajectory error");
+ylabel("frequency");
 alpha = 0.05; % desired failure probability
 alpha_ind_loc = ceil((1-alpha)*(length(max_traj_err)+1));
 alpha_crit = max_traj_err(alpha_ind_loc)
 hold on
 xline(alpha_crit, "--",'linewidth',2)
 hold off;
+xlim([0, 0.2]);
+ylim([0, 50]);
+set(gca(), 'Box', 'off', 'XGrid', 'off', 'YGrid', 'off')
 
 

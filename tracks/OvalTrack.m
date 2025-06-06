@@ -15,7 +15,7 @@ classdef OvalTrack < Track
         obstacle_spawn_ylim = 1;
         obstacle_spawn_mean = 1; % spawn obstacle once state passes this line
         obstacle_spawn_var = 0.05;
-        obstacle_clearance = 0.00;
+        clearance = 0.00;
     end
 
     properties (Access=private)
@@ -55,7 +55,47 @@ classdef OvalTrack < Track
         end
         
         function outside_bounds = checkTrackLimits(obj, system_pos)
-        % Function to check if we have are outside track limits
+        % Function to check if we have are outside track limits including
+        %   the clearance distance
+        %   returns true if system_pos outside the track
+        %
+        %   system_pos: position  of system in [x;y]
+
+            if((system_pos(2) > 0) && ...
+               (system_pos(2) < obj.boundaries.straightlength))
+            
+                % check if in (0,0) side
+                inside_bounds = (system_pos(1) <= obj.boundaries.width/2 - obj.clearance) && ...
+                                (system_pos(1) >= -obj.boundaries.width/2 + obj.clearance);
+
+                % check if in other side
+                inside_bounds = inside_bounds || ...
+                                (system_pos(1) <= -2*obj.boundaries.radius - obj.boundaries.width/2 - obj.clearance) && ...
+                                (system_pos(1) >= -2*obj.boundaries.radius - 3*obj.boundaries.width/2 + obj.clearance);
+
+            else % we are in the curves
+
+                % by default say it is in the bottom curve
+                center_pt = [-obj.boundaries.radius - obj.boundaries.width/2; 
+                             0];                
+
+                if(system_pos(2) >= obj.boundaries.straightlength)
+                    % system is in the top curve
+                    center_pt(2) = obj.boundaries.straightlength;
+                end
+
+                r = vecnorm(system_pos(1:2) - center_pt);
+
+                inside_bounds = (r >= obj.boundaries.radius + obj.clearance) && ...
+                                (r <= obj.boundaries.radius + obj.boundaries.width - obj.clearance);
+
+            end
+
+            outside_bounds = ~inside_bounds;
+        end
+
+        function outside_bounds = hitTrackLimits(obj, system_pos)
+        % Function to check if we have are outside track limits 
         %   returns true if system_pos outside the track
         %
         %   system_pos: position  of system in [x;y]
@@ -94,6 +134,22 @@ classdef OvalTrack < Track
         end
 
         function in_obstacle = checkObstacles(obj, system_pos)
+        % Function to check if we are within the clearance zone of an obstacle
+        %   returns true if system_pos inside obstacle + clearance zone
+        %
+        %   system_pos: position of system in [x;y]
+
+            if(obj.obstacle.active)
+                % check if state is inside boundary
+                
+                in_obstacle = obj.getObstacleDistance(system_pos) < obj.clearance;
+            else
+                % no obstacles
+                in_obstacle = false;
+            end
+        end
+
+        function in_obstacle = hitObstacles(obj, system_pos)
         % Function to check if we have hit an obstacle
         %   returns true if system_pos inside obstacle
         %
@@ -102,7 +158,7 @@ classdef OvalTrack < Track
             if(obj.obstacle.active)
                 % check if state is inside boundary
                 
-                in_obstacle = obj.getObstacleDistance(system_pos) < obj.obstacle_clearance;
+                in_obstacle = obj.getObstacleDistance(system_pos) < 0;
             else
                 % no obstacles
                 in_obstacle = false;
